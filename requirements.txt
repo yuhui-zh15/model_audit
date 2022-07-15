@@ -5,3 +5,4 @@ click
 pytest
 pre-commit
 typed-ast
+isort
