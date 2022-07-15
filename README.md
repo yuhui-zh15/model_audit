@@ -10,6 +10,7 @@
 - pytest: easy unit tests
 - pre-commit: workflow before commit
 - typed-ast: special type annotations
+- isort: sort imports
 - GitHub Action: set up Python automatic tests
 
 
