@@ -1,4 +1,5 @@
-# Repo Template
+# Python Repo Template
+
 
 ## Software Tricks
 
@@ -9,6 +10,8 @@
 - pytest: easy unit tests
 - pre-commit: workflow before commit
 - typed-ast: special type annotations
+- GitHub Action: set up Python automatic tests
+
 
 ## Python Tricks
 
