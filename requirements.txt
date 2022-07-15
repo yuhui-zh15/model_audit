@@ -1,0 +1,7 @@
+black
+mypy
+flake8
+click
+pytest
+pre-commit
+typed-ast

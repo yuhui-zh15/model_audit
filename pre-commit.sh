@@ -2,7 +2,7 @@
 
 set -e
 
-pip install black mypy flake8 click pytest pre-commit typed-ast
+pip install -r requirements.txt
 pre-commit install
 
 black src
