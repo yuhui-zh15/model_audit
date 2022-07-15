@@ -8,6 +8,5 @@ pre-commit install
 black src
 mypy src
 flake8 src
-pytest
 
 echo "Done."
