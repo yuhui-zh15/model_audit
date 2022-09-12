@@ -10,3 +10,5 @@ clip
 torch
 numpy
 pandas
+pillow
+matplotlib
