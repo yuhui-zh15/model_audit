@@ -6,3 +6,7 @@ pytest
 pre-commit
 typed-ast
 isort
+clip
+torch
+numpy
+pandas
