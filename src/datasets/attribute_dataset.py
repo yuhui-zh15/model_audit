@@ -1,9 +1,10 @@
 import json
 import random
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
+import torch
 from PIL import Image  # type: ignore
-from torch.utils.data import Dataset
+from torch.utils.data import DataLoader, Dataset
 
 
 class AttributeDataset(Dataset):
@@ -23,13 +24,11 @@ class AttributeDataset(Dataset):
         path: str,
         filter_func: Optional[Callable] = None,
         label_func: Optional[Callable] = None,
-        transform: Optional[Callable] = None,
         max_data_size: Optional[int] = None,
     ) -> None:
         self.path = path
         self.filter_func = filter_func
         self.label_func = label_func
-        self.transform = transform
         self.max_data_size = max_data_size
 
         attributes = [json.loads(line) for line in open(f"{path}/attributes.jsonl")]
@@ -53,12 +52,31 @@ class AttributeDataset(Dataset):
         image = Image.open(f"{self.path}/{filename}")
         return image, label, self.data[idx]
 
-    # @staticmethod
-    # def collate_fn(batch):
-    #     images, labels, _ = zip(*batch)
-    #     images = torch.stack(images, dim=0)
-    #     labels = torch.tensor(labels)
-    #     return images, labels
+
+def create_dataloader(
+    dataset: AttributeDataset,
+    transform: Callable,
+    batch_size: int = 32,
+    shuffle: bool = False,
+    num_workers: int = 4,
+) -> DataLoader:
+    def collate_fn(
+        batch: List, transform: Callable
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        images, labels, _ = zip(*batch)
+        image_inputs = torch.stack([transform(image) for image in images], dim=0)
+        labels = torch.tensor(labels)
+        return image_inputs, labels
+
+    dataloader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        num_workers=num_workers,
+        pin_memory=True,
+        collate_fn=lambda batch: collate_fn(batch, transform),
+    )
+    return dataloader
 
 
 if __name__ == "__main__":
@@ -69,3 +87,6 @@ if __name__ == "__main__":
     )
     print(f"{len(dataset)=}")
     print(f"{dataset[0]=}")
+    dataLoader = create_dataloader(
+        dataset=dataset, transform=lambda x: torch.zeros(100)
+    )
