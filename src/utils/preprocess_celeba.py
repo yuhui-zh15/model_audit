@@ -3,7 +3,7 @@ import os
 
 import pandas as pd  # type: ignore
 
-base_dir = "/sailhome/yuhuiz/data/CelebA/"
+base_dir = "/sailhome/yuhuiz/data/CelebA"
 annotations = pd.read_csv(f"{base_dir}/raw/list_attr_celeba.csv").to_dict(
     orient="records"
 )
@@ -22,7 +22,12 @@ for partition, annotation in zip(partitions, annotations):
     partition = ["train", "val", "test"][partition["partition"]]
     assert "split" not in attributes
     attributes["split"] = partition
-    data.append({"image": f"images/{image_id}", "attributes": attributes})
+    data.append(
+        {
+            "image": f"{base_dir}/processed_attribute_dataset/images/{image_id}",
+            "attributes": attributes,
+        }
+    )
 
 os.mkdir(f"{base_dir}/processed_attribute_dataset")
 
