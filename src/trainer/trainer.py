@@ -27,7 +27,7 @@ def run_one_epoch(
     model = model.train() if not eval else model.eval()
     clip_model = clip_model.eval()
 
-    losses, preds, labels = [], [], []
+    losses, preds, labels, features = [], [], [], []
     bar = (
         tqdm(dataloader, desc=f"Epoch {epoch_idx}, Eval {eval}")
         if verbose
@@ -56,6 +56,7 @@ def run_one_epoch(
         losses.append(loss.item())
         preds.extend(logits.argmax(dim=1).detach().cpu().tolist())
         labels.extend(y.detach().cpu().tolist())
+        features.extend(h.detach().cpu().tolist())
 
     acc = np.mean(np.array(preds) == np.array(labels))
     loss = np.mean(losses)
@@ -64,4 +65,5 @@ def run_one_epoch(
         "acc": acc,
         "preds": preds,
         "labels": labels,
+        "features": features,
     }
