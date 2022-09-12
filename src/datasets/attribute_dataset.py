@@ -26,6 +26,7 @@ class AttributeDataset(Dataset):
         label_func: Optional[Callable] = None,
         max_data_size: Optional[int] = None,
     ) -> None:
+        super().__init__()
         self.path = path
         self.filter_func = filter_func
         self.label_func = label_func
