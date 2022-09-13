@@ -1,3 +1,4 @@
+import itertools
 import json
 
 import clip  # type: ignore
@@ -159,10 +160,13 @@ def eval_waterbird():
     )
     print(image_subgroup_metrics)
 
-    subgroups = subgrouping(image_data, ["species", "place"])
-    print(subgroups)
-    places = set([x["attributes"]["place"] for x in image_data])
-    species = set([x["attributes"]["species"] for x in image_data])
+    attributes = {
+        "place": set([x["attributes"]["place"] for x in image_data]),
+        "species": set([x["attributes"]["species"] for x in image_data]),
+    }
+    attributes_combinations = [
+        dict(zip(attributes, x)) for x in itertools.product(*attributes.values())
+    ]
     species_to_label = {
         x["attributes"]["species"]: x["attributes"]["waterbird"] for x in image_data
     }
@@ -171,15 +175,14 @@ def eval_waterbird():
     }
     text_data = [
         {
-            "text": f"a photo of a {species} in the {place}.",
-            "label": species_to_label[species],
+            "text": f"a photo of a {x['species']} in the {x['place']}.",
+            "label": species_to_label[x["species"]],
             "attributes": {
-                "waterbird": species_to_label[species],
-                "waterplace": places_to_label[place],
+                "waterbird": species_to_label[x["species"]],
+                "waterplace": places_to_label[x["place"]],
             },
         }
-        for species in species
-        for place in places
+        for x in attributes_combinations
     ]
     text_dataset = TextDataset(data=text_data)
     text_dataloader = create_dataloader(dataset=text_dataset, modality="text")
