@@ -159,6 +159,8 @@ def eval_waterbird():
     )
     print(image_subgroup_metrics)
 
+    subgroups = subgrouping(image_data, ["species", "place"])
+    print(subgroups)
     places = set([x["attributes"]["place"] for x in image_data])
     species = set([x["attributes"]["species"] for x in image_data])
     species_to_label = {
