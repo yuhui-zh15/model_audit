@@ -5,6 +5,9 @@ from datasets import AttributeDataset, ImageDataset, TextDataset, create_dataloa
 CELEBA_PATH = "/pasteur/u/yuhuiz/data/CelebA/processed_attribute_dataset"
 WATERBIRDS_PATH = "/pasteur/u/yuhuiz/data/Waterbird/processed_attribute_dataset"
 FAIRFACE_PATH = "/pasteur/u/yuhuiz/data/FairFace/processed_attribute_dataset"
+TRIANGLESQUARE_PATH = (
+    "/pasteur/u/yuhuiz/data/TriangleSquare/processed_attribute_dataset"
+)
 
 
 def test_image_dataset():
@@ -60,6 +63,19 @@ def test_attribute_dataset_fairface():
     assert dataloader is not None
 
 
+def test_attribute_dataset_trianglesquare():
+    dataset = AttributeDataset(
+        path=TRIANGLESQUARE_PATH,
+        filter_func=None,
+        label_func=lambda x: x["attributes"]["label"],
+    )
+    assert len(dataset) == 10000
+    dataloader = create_dataloader(
+        dataset=dataset, modality="image", transform=lambda x: torch.zeros(100)
+    )
+    assert dataloader is not None
+
+
 def test_text_dataset():
     dataset = TextDataset(
         data=[
@@ -77,4 +93,5 @@ if __name__ == "__main__":
     test_attribute_dataset_celeba()
     test_attribute_dataset_waterbirds()
     test_attribute_dataset_fairface()
+    test_attribute_dataset_trianglesquare()
     test_text_dataset()
