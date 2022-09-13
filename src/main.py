@@ -1,12 +1,12 @@
 import json
 
 import clip  # type: ignore
-import numpy as np
 import torch
 
-from datasets import AttributeDataset, TextDataset, create_dataloader
+from datasets import AttributeDataset, ImageDataset, TextDataset, create_dataloader
 from models import Linear
 from trainer import run_one_epoch
+from utils import computing_subgroup_metrics, subgrouping
 
 
 def main_waterbird():
@@ -118,29 +118,60 @@ def eval_waterbird():
     state_dict = torch.load("waterbird_linear_model.pt")
     model.load_state_dict(state_dict)
 
-    attributes = [
+    fields = ["waterbird", "waterplace"]
+
+    image_data = [
         json.loads(line)
         for line in open(
             "/pasteur/u/yuhuiz/data/Waterbird/processed_attribute_dataset/attributes.jsonl"
         )
     ]
-    places = set([x["attributes"]["place"] for x in attributes])
-    species = set([x["attributes"]["species"] for x in attributes])
+
+    def filter_fn(x):
+        return x["attributes"]["split"] == "val"
+
+    image_data = [x for x in image_data if filter_fn(x)]
+
+    def label_fn(x):
+        return x["attributes"]["waterbird"]
+
+    for item in image_data:
+        item["label"] = label_fn(item)
+
+    image_dataset = ImageDataset(data=image_data)
+    image_dataloader = create_dataloader(
+        dataset=image_dataset, modality="image", transform=transform
+    )
+    image_metrics = run_one_epoch(
+        dataloader=image_dataloader,
+        model=model,
+        clip_model=clip_model,
+        modality="image",
+        opt=None,
+        epoch_idx=-1,
+        eval=True,
+        verbose=True,
+    )
+    image_preds, image_labels = image_metrics["preds"], image_metrics["labels"]
+    image_subgroups = subgrouping(image_data, fields)
+    image_subgroup_metrics = computing_subgroup_metrics(
+        image_preds, image_labels, image_subgroups
+    )
+    print(image_subgroup_metrics)
+
+    places = set([x["attributes"]["place"] for x in image_data])
+    species = set([x["attributes"]["species"] for x in image_data])
     species_to_label = {
-        x["attributes"]["species"]: x["attributes"]["waterbird"] for x in attributes
+        x["attributes"]["species"]: x["attributes"]["waterbird"] for x in image_data
     }
     places_to_label = {
-        x["attributes"]["place"]: x["attributes"]["waterplace"] for x in attributes
+        x["attributes"]["place"]: x["attributes"]["waterplace"] for x in image_data
     }
-    del attributes
-
-    data = [
+    text_data = [
         {
             "text": f"a photo of a {species} in the {place}.",
             "label": species_to_label[species],
             "attributes": {
-                "species": species,
-                "place": place,
                 "waterbird": species_to_label[species],
                 "waterplace": places_to_label[place],
             },
@@ -148,9 +179,8 @@ def eval_waterbird():
         for species in species
         for place in places
     ]
-    text_dataset = TextDataset(data=data)
+    text_dataset = TextDataset(data=text_data)
     text_dataloader = create_dataloader(dataset=text_dataset, modality="text")
-
     text_metrics = run_one_epoch(
         dataloader=text_dataloader,
         model=model,
@@ -161,20 +191,12 @@ def eval_waterbird():
         eval=True,
         verbose=True,
     )
-
-    preds, labels = text_metrics["preds"], text_metrics["labels"]
-    preds, labels = np.array(preds), np.array(labels)
-
-    for is_waterbird in [0, 1]:
-        for is_waterplace in [0, 1]:
-            slices = [
-                idx
-                for idx, x in enumerate(data)
-                if x["attributes"]["waterbird"] == is_waterbird
-                and x["attributes"]["waterplace"] == is_waterplace
-            ]
-            acc_slice = (preds[slices] == labels[slices]).mean()
-            print(f"{is_waterbird=}, {is_waterplace=}, {acc_slice=}")
+    text_preds, text_labels = text_metrics["preds"], text_metrics["labels"]
+    text_subgroups = subgrouping(text_data, fields)
+    text_subgroup_metrics = computing_subgroup_metrics(
+        text_preds, text_labels, text_subgroups
+    )
+    print(text_subgroup_metrics)
 
 
 def main():
