@@ -1,6 +1,7 @@
 import json
 
 import clip  # type: ignore
+import numpy as np
 import torch
 
 from datasets import AttributeDataset, TextDataset, create_dataloader
@@ -110,6 +111,72 @@ def main_waterbird():
     torch.save(model.state_dict(), "waterbird_linear_model.pt")
 
 
+def eval_waterbird():
+    clip_model, transform = clip.load(name="ViT-B/32", device="cuda")
+    clip_model = clip_model.float()
+    model = Linear(clip_model.visual.output_dim, 2).cuda()
+    state_dict = torch.load("waterbird_linear_model.pt")
+    model.load_state_dict(state_dict)
+
+    attributes = [
+        json.loads(line)
+        for line in open(
+            "/pasteur/u/yuhuiz/data/Waterbird/processed_attribute_dataset/attributes.jsonl"
+        )
+    ]
+    places = set([x["attributes"]["place"] for x in attributes])
+    species = set([x["attributes"]["species"] for x in attributes])
+    species_to_label = {
+        x["attributes"]["species"]: x["attributes"]["waterbird"] for x in attributes
+    }
+    places_to_label = {
+        x["attributes"]["place"]: x["attributes"]["waterplace"] for x in attributes
+    }
+    del attributes
+
+    data = [
+        {
+            "text": f"a photo of a {species} in the {place}.",
+            "label": species_to_label[species],
+            "attributes": {
+                "species": species,
+                "place": place,
+                "waterbird": species_to_label[species],
+                "waterplace": places_to_label[place],
+            },
+        }
+        for species in species
+        for place in places
+    ]
+    text_dataset = TextDataset(data=data)
+    text_dataloader = create_dataloader(dataset=text_dataset, modality="text")
+
+    text_metrics = run_one_epoch(
+        dataloader=text_dataloader,
+        model=model,
+        clip_model=clip_model,
+        modality="text",
+        opt=None,
+        epoch_idx=-1,
+        eval=True,
+        verbose=True,
+    )
+
+    preds, labels = text_metrics["preds"], text_metrics["labels"]
+    preds, labels = np.array(preds), np.array(labels)
+
+    for is_waterbird in [0, 1]:
+        for is_waterplace in [0, 1]:
+            slices = [
+                idx
+                for idx, x in enumerate(data)
+                if x["attributes"]["waterbird"] == is_waterbird
+                and x["attributes"]["waterplace"] == is_waterplace
+            ]
+            acc_slice = (preds[slices] == labels[slices]).mean()
+            print(f"{is_waterbird=}, {is_waterplace=}, {acc_slice=}")
+
+
 def main():
     clip_model, transform = clip.load(name="ViT-B/32", device="cuda")
     clip_model = clip_model.float()
@@ -174,4 +241,5 @@ def main():
 
 if __name__ == "__main__":
     # main()
-    main_waterbird()
+    # main_waterbird()
+    eval_waterbird()
