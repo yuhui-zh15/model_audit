@@ -1,3 +1,5 @@
+import json
+
 import clip  # type: ignore
 import torch
 
@@ -29,10 +31,26 @@ def main_waterbird():
         dataset=image_dataset_val, modality="image", transform=transform, shuffle=False
     )
 
+    attributes = [
+        json.loads(line)
+        for line in open(
+            "/pasteur/u/yuhuiz/data/Waterbird/processed_attribute_dataset/attributes.jsonl"
+        )
+    ]
+    places = set([x["attributes"]["place"] for x in attributes])
+    species = set([x["attributes"]["species"] for x in attributes])
+    species_to_label = {
+        x["attributes"]["species"]: x["attributes"]["waterbird"] for x in attributes
+    }
+
     text_dataset = TextDataset(
         data=[
-            {"text": "a photo of a waterbird.", "label": 1},
-            {"text": "a photo of a non-waterbird.", "label": 0},
+            {
+                "text": f"a photo of a {species} in the {place}.",
+                "label": species_to_label[species],
+            }
+            for species in species
+            for place in places
         ],
     )
     text_dataloader = create_dataloader(dataset=text_dataset, modality="text")
