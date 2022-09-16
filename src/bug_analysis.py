@@ -18,6 +18,7 @@ from matplotlib import pyplot as plt
 
 DATASET_PATHS = {
     "waterbird": "/pasteur/u/yuhuiz/data/Waterbird/processed_attribute_dataset/attributes.jsonl",
+    "waterbird_generated": '/pasteur/u/yuhuiz/data/GeneratedWaterBird/waterbird_text_data_generated_images_n=20.jsonl',
     "triangelsquare": "/pasteur/u/yuhuiz/data/TriangleSquare/processed_attribute_dataset/attributes.jsonl",
     "fairface": "/pasteur/u/yuhuiz/data/FairFace/processed_attribute_dataset/attributes.jsonl",
     "celeba": "/pasteur/u/yuhuiz/data/CelebA/processed_attribute_dataset/attributes.jsonl",
@@ -108,9 +109,11 @@ def get_img_dataloader(args, transform):
     # get dataset
     data_path = DATASET_PATHS[args.dataset]
     image_data = [json.loads(line) for line in open(data_path)]
-    image_data = [
-        x for x in image_data if filter_fn(x, args.filter_category, args.filter_value)
-    ]
+
+    if args.filter_category is not None:
+        image_data = [
+            x for x in image_data if filter_fn(x, args.filter_category, args.filter_value)
+        ]
 
     # set label
     for item in image_data:
@@ -255,7 +258,9 @@ def main(args):
         args.finegrain_confounder,
         modality="image",
     )
-    pprint(sorted(img_fg_subgroup_metrics.items(), key=lambda x: x[1]))
+    pprint(sorted(img_fg_subgroup_metrics.items(), key=lambda x: x[1])[:5])
+    print("...")
+    pprint(sorted(img_fg_subgroup_metrics.items(), key=lambda x: x[1])[-5:])
 
     print("-" * 80)
     txt_fg_subgroup_metrics, txt_fg_metrics = compute_group_analysis(
@@ -267,8 +272,10 @@ def main(args):
         args.finegrain_confounder,
         modality="text",
     )
-    pprint(sorted(txt_fg_subgroup_metrics.items(), key=lambda x: x[1]))
-    print("\n")
+    pprint(sorted(txt_fg_subgroup_metrics.items(), key=lambda x: x[1])[:5])
+    print("...")
+    pprint(sorted(txt_fg_subgroup_metrics.items(), key=lambda x: x[1])[-5:])
+    print('\n')
 
     # DEBUG #2b: correlation
     print("=" * 80 + "Correlation Analysis" + "=" * 80)
@@ -370,12 +377,12 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--filter_category",
-        default="split",
+        default=None,
         type=str,
         help="Category to filter dataset on",
     )
     parser.add_argument(
-        "--filter_value", default="val", type=str, help="Value to filter dataset with"
+        "--filter_value", default=None, type=str, help="Value to filter dataset with"
     )
     parser.add_argument(
         "--label", default="waterbird", type=str, help="Attribute to use as label "
