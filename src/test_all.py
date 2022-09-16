@@ -98,9 +98,13 @@ def test_text_dataset():
 
 
 def test_paired_dataset_coco():
-    dataset = PairedDataset(
-        data=[json.loads(line) for line in open(f"{COCO_PATH}/attributes.jsonl")],
-    )
+    def filter_func(x):
+        return x["attributes"]["split"] == "val"
+
+    data = [json.loads(line) for line in open(f"{COCO_PATH}/attributes.jsonl")]
+    filtered_data = [x for x in data if filter_func(x)]
+    dataset = PairedDataset(data=filtered_data)
+    assert len(dataset) == 5000
     dataloader = create_dataloader(
         dataset=dataset,
         modality="image",
