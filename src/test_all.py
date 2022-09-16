@@ -1,6 +1,14 @@
+import json
+
 import torch
 
-from datasets import AttributeDataset, ImageDataset, TextDataset, create_dataloader
+from datasets import (
+    AttributeDataset,
+    ImageDataset,
+    PairedDataset,
+    TextDataset,
+    create_dataloader,
+)
 
 CELEBA_PATH = "/pasteur/u/yuhuiz/data/CelebA/processed_attribute_dataset"
 WATERBIRDS_PATH = "/pasteur/u/yuhuiz/data/Waterbird/processed_attribute_dataset"
@@ -8,6 +16,7 @@ FAIRFACE_PATH = "/pasteur/u/yuhuiz/data/FairFace/processed_attribute_dataset"
 TRIANGLESQUARE_PATH = (
     "/pasteur/u/yuhuiz/data/TriangleSquare/processed_attribute_dataset"
 )
+COCO_PATH = "/pasteur/u/yuhuiz/data/COCO/processed_attribute_dataset"
 
 
 def test_image_dataset():
@@ -88,6 +97,19 @@ def test_text_dataset():
     assert dataloader is not None
 
 
+def test_paired_dataset_coco():
+    dataset = PairedDataset(
+        data=[json.loads(line) for line in open(f"{COCO_PATH}/attributes.jsonl")],
+    )
+    dataloader = create_dataloader(
+        dataset=dataset,
+        modality="image",
+        transform=lambda x: torch.zeros(100),
+        paired=True,
+    )
+    assert dataloader is not None
+
+
 if __name__ == "__main__":
     test_image_dataset()
     test_attribute_dataset_celeba()
@@ -95,3 +117,4 @@ if __name__ == "__main__":
     test_attribute_dataset_fairface()
     test_attribute_dataset_trianglesquare()
     test_text_dataset()
+    test_paired_dataset_coco()

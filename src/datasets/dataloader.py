@@ -12,9 +12,15 @@ def create_dataloader(
     batch_size: int = 32,
     shuffle: bool = False,
     num_workers: int = 4,
+    paired: bool = False,
 ) -> DataLoader:
     def collate_fn(batch: List) -> Tuple[torch.Tensor, torch.Tensor]:
-        raw_inputs, labels, _ = zip(*batch)
+        if paired and modality == "image":
+            raw_inputs, _, labels, _ = zip(*batch)
+        elif paired and modality == "text":
+            _, raw_inputs, labels, _ = zip(*batch)
+        else:
+            raw_inputs, labels, _ = zip(*batch)
         if modality == "image":
             assert (
                 transform is not None
