@@ -1,6 +1,7 @@
-import itertools
 import json
 import os
+from pprint import pprint
+
 import clip  # type: ignore
 import torch
 import wandb
@@ -8,16 +9,14 @@ import wandb
 from datasets import AttributeDataset, ImageDataset, TextDataset, create_dataloader
 from models import Linear
 from trainer import run_one_epoch
-from utils import computing_subgroup_metrics, subgrouping
-from pprint import pprint
-
 
 CLIP_MODEL = "ViT-B/32"
 COCO_PATH = "/pasteur/u/yuhuiz/data/COCO/processed_attribute_dataset"
 COCO_NUM_CLS = 80
- 
+
+
 def train_coco():
-    wandb.init(project='mmdebug')
+    wandb.init(project="mmdebug")
 
     clip_model, transform = clip.load(name=CLIP_MODEL, device="cuda")
     clip_model = clip_model.float()
@@ -33,7 +32,7 @@ def train_coco():
     )
 
     image_dataset_val = AttributeDataset(
-        path=COCO_PATH, 
+        path=COCO_PATH,
         filter_func=lambda x: x["attributes"]["split"] == "val",
         label_func=lambda x: x["label"],
     )
@@ -53,9 +52,8 @@ def train_coco():
             eval=False,
             verbose=True,
             multilabel=True,
-            cls_mapping=COCO_CLS_MAPPING,
         )
-        
+
         image_metrics_train = run_one_epoch(
             dataloader=image_dataloader_train,
             model=model,
@@ -66,7 +64,6 @@ def train_coco():
             eval=True,
             verbose=True,
             multilabel=True,
-            cls_mapping=COCO_CLS_MAPPING,
         )
 
         image_metrics_val = run_one_epoch(
@@ -79,14 +76,11 @@ def train_coco():
             eval=True,
             verbose=True,
             multilabel=True,
-            cls_mapping=COCO_CLS_MAPPING,
         )
-        wandb.log({"train_loss": image_metrics_train['loss']})
-        wandb.log({"train_acc": image_metrics_train['acc']})
-        wandb.log({"val_loss": image_metrics_val['loss']})
-        wandb.log({"val_acc": image_metrics_val['acc']})
-        
-        
+        wandb.log({"train_loss": image_metrics_train["loss"]})
+        wandb.log({"train_acc": image_metrics_train["acc"]})
+        wandb.log({"val_loss": image_metrics_val["loss"]})
+        wandb.log({"val_acc": image_metrics_val["acc"]})
 
         print(
             f"Epoch {epoch_idx}: {image_metrics_train['acc']=}, {image_metrics_train['loss']=}, \
@@ -104,10 +98,7 @@ def eval_coco():
     model.load_state_dict(state_dict)
 
     image_data = [
-        json.loads(line)
-        for line in open(
-            os.path.join(COCO_PATH, 'attributes.jsonl')
-        )
+        json.loads(line) for line in open(os.path.join(COCO_PATH, "attributes.jsonl"))
     ]
 
     def filter_fn(x):
@@ -135,15 +126,13 @@ def eval_coco():
         eval=True,
         verbose=True,
         multilabel=True,
-        cls_mapping=COCO_CLS_MAPPING,
     )
-    pprint(image_metrics['acc'])
-
+    pprint(image_metrics["acc"])
 
     text_data = [
         {
-            "text": x['text'],
-            "label": x['label'],
+            "text": x["text"],
+            "label": x["label"],
         }
         for x in image_data
     ]
@@ -159,11 +148,10 @@ def eval_coco():
         eval=True,
         verbose=True,
         multilabel=True,
-        cls_mapping=COCO_CLS_MAPPING,
     )
-    pprint(text_metrics['acc'])
+    pprint(text_metrics["acc"])
 
 
-if __name__ == "__main__": 
+if __name__ == "__main__":
     train_coco()
     eval_coco()

@@ -1,13 +1,12 @@
 from typing import Dict, Optional
 
-
-from sklearn.metrics import accuracy_score, balanced_accuracy_score
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from clip.model import CLIP  # type: ignore
+from sklearn.metrics import balanced_accuracy_score  # type: ignore
 from torch.utils.data import DataLoader
 from tqdm import tqdm  # type: ignore
 
@@ -21,7 +20,7 @@ def run_one_epoch(
     epoch_idx: int = -1,
     eval: bool = False,
     verbose: bool = False,
-    multilabel: bool = False, 
+    multilabel: bool = False,
 ) -> Dict:
 
     if not eval:
@@ -51,8 +50,8 @@ def run_one_epoch(
         logits_ = model(h)
 
         if multilabel:
-            loss = F.binary_cross_entropy_with_logits(logits_, y.float())
-        else: 
+            loss = F.binary_cross_entropy_with_logits(logits_, y)
+        else:
             loss = F.cross_entropy(logits_, y)
 
         if not eval:
@@ -61,12 +60,7 @@ def run_one_epoch(
             opt.step()  # type: ignore
 
         if multilabel:
-            pred = torch.sigmoid(logits_).detach().cpu()
-            pred[pred >= 0.5] = 1
-            pred[pred < 0.5] = 0
-            preds.extend(
-                pred.tolist()
-            )
+            preds.extend((logits_ > 0).float().detach().cpu().tolist())
         else:
             preds.extend(logits_.argmax(dim=1).detach().cpu().tolist())
         losses.append(loss.item())
@@ -75,7 +69,10 @@ def run_one_epoch(
         features.extend(h.detach().cpu().tolist())
 
     if multilabel:
-        accs = [balanced_accuracy_score(np.array(labels)[:,i], np.array(preds)[:,i]) for i in range(np.array(preds).shape[1])]
+        accs = [
+            balanced_accuracy_score(np.array(labels)[:, i], np.array(preds)[:, i])
+            for i in range(np.array(preds).shape[1])
+        ]
         acc = sum(accs) / len(accs)
     else:
         acc = np.mean(np.array(preds) == np.array(labels))

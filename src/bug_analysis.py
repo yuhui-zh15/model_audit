@@ -1,24 +1,23 @@
+import argparse
 import itertools
 import json
 from pprint import pprint
 
-import argparse
-
 import clip  # type: ignore
+import numpy as np
 import torch
 import torch.nn.functional as F
-import numpy as np
-from scipy.stats import spearmanr, pearsonr
+from matplotlib import pyplot as plt  # type: ignore
+from scipy.stats import pearsonr, spearmanr  # type: ignore
 
-from datasets import AttributeDataset, ImageDataset, TextDataset, create_dataloader
+from datasets import ImageDataset, TextDataset, create_dataloader
 from models import Linear
 from trainer import run_one_epoch
 from utils import computing_subgroup_metrics, subgrouping
-from matplotlib import pyplot as plt
 
 DATASET_PATHS = {
     "waterbird": "/pasteur/u/yuhuiz/data/Waterbird/processed_attribute_dataset/attributes.jsonl",
-    "waterbird_generated": '/pasteur/u/yuhuiz/data/GeneratedWaterBird/waterbird_text_data_generated_images_n=20.jsonl',
+    "waterbird_generated": "/pasteur/u/yuhuiz/data/GeneratedWaterBird/waterbird_text_data_generated_images_n=20.jsonl",
     "triangelsquare": "/pasteur/u/yuhuiz/data/TriangleSquare/processed_attribute_dataset/attributes.jsonl",
     "fairface": "/pasteur/u/yuhuiz/data/FairFace/processed_attribute_dataset/attributes.jsonl",
     "celeba": "/pasteur/u/yuhuiz/data/CelebA/processed_attribute_dataset/attributes.jsonl",
@@ -112,7 +111,9 @@ def get_img_dataloader(args, transform):
 
     if args.filter_category is not None:
         image_data = [
-            x for x in image_data if filter_fn(x, args.filter_category, args.filter_value)
+            x
+            for x in image_data
+            if filter_fn(x, args.filter_category, args.filter_value)
         ]
 
     # set label
@@ -198,8 +199,8 @@ def compute_and_plot_correlation(values, plot_path):
     values = np.array(values)
     pearson = pearsonr(values[:, 0], values[:, 1])
     spearman = spearmanr(values[:, 0], values[:, 1])
-    print("Pearson correlation: ", pearson)
-    print("Spearman correlation: ", spearman)
+    print(f"Pearson correlation: {pearson}")
+    print(f"Spearman correlation: {spearman}")
 
     # plot
     plt.scatter(values[:, 0], values[:, 1], alpha=0.3, s=10)
@@ -275,7 +276,7 @@ def main(args):
     pprint(sorted(txt_fg_subgroup_metrics.items(), key=lambda x: x[1])[:5])
     print("...")
     pprint(sorted(txt_fg_subgroup_metrics.items(), key=lambda x: x[1])[-5:])
-    print('\n')
+    print("\n")
 
     # DEBUG #2b: correlation
     print("=" * 80 + "Correlation Analysis" + "=" * 80)
@@ -284,7 +285,7 @@ def main(args):
         (txt_fg_subgroup_metrics[x], img_fg_subgroup_metrics[x])
         for x in img_fg_subgroup_metrics
     ]
-    acc_plot_path = f"{args.dataset}_l={args.label}_c={args.confounder}_fgl={args.finegrain_label}_fgc={args.finegrain_confounder}_acc.png"
+    acc_plot_path = f"{args.dataset}_acc.png"
     acc_pearson, acc_spearman = compute_and_plot_correlation(accs, acc_plot_path)
 
     print("-" * 80)
@@ -302,7 +303,7 @@ def main(args):
         (text_subgroup_probs[x], img_fg_subgroup_metrics[x])
         for x in img_fg_subgroup_metrics
     ]
-    prob_plot_path = f"{args.dataset}_l={args.label}_c={args.confounder}_fgl={args.finegrain_label}_fgc={args.finegrain_confounder}_probs.png"
+    prob_plot_path = f"{args.dataset}_probs.png"
     pearson, spearman = compute_and_plot_correlation(probs, prob_plot_path)
     print("\n")
 
@@ -344,13 +345,14 @@ def main(args):
             probs = torch.softmax(model(embeddings), dim=1).cpu()
 
         shapley = (
-            probs[len(fg_label_list) :, 1] - probs[: len(fg_label_list), 1]
+            probs[len(fg_label_list) :, 1]  # noqa: E203
+            - probs[: len(fg_label_list), 1]  # noqa: E203
         ).mean()
         print(f"Shapley value of {conf} for {args.label} = {shapley}")
         shapley_values[conf] = shapley
 
     # TODO:
-    ## Store results in dataframe
+    # Store results in dataframe
 
 
 if __name__ == "__main__":
