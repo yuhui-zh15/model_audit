@@ -100,8 +100,8 @@ def train_coco(train_modality: str):
 
         wandb.log(
             {
-                "train/img_loss": image_metrics_train["loss"],
-                "train/img_acc": image_metrics_train["acc"],
+                "train/loss": image_metrics_train["loss"],
+                "train/acc": image_metrics_train["acc"],
                 "val/img_loss": image_metrics_val["loss"],
                 "val/img_acc": image_metrics_val["acc"],
                 "val/txt_loss": text_metrics_val["loss"],
