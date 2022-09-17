@@ -4,8 +4,8 @@ from pprint import pprint
 
 import clip  # type: ignore
 import torch
-import wandb
 
+import wandb
 from datasets import AttributeDataset, ImageDataset, TextDataset, create_dataloader
 from models import Linear
 from trainer import run_one_epoch

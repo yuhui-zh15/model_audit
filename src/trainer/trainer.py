@@ -50,7 +50,7 @@ def run_one_epoch(
         logits_ = model(h)
 
         if multilabel:
-            loss = F.binary_cross_entropy_with_logits(logits_, y)
+            loss = F.binary_cross_entropy_with_logits(logits_, y.float())
         else:
             loss = F.cross_entropy(logits_, y)
 
