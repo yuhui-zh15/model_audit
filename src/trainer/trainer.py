@@ -1,5 +1,7 @@
 from typing import Dict, Optional
 
+
+from sklearn.metrics import accuracy_score, balanced_accuracy_score
 import numpy as np
 import torch
 import torch.nn as nn
@@ -19,6 +21,7 @@ def run_one_epoch(
     epoch_idx: int = -1,
     eval: bool = False,
     verbose: bool = False,
+    multilabel: bool = False, 
 ) -> Dict:
 
     if not eval:
@@ -47,19 +50,35 @@ def run_one_epoch(
 
         logits_ = model(h)
 
-        loss = F.cross_entropy(logits_, y)
+        if multilabel:
+            loss = F.binary_cross_entropy_with_logits(logits_, y.float())
+        else: 
+            loss = F.cross_entropy(logits_, y)
+
         if not eval:
             opt.zero_grad()  # type: ignore
             loss.backward()
             opt.step()  # type: ignore
 
+        if multilabel:
+            pred = torch.sigmoid(logits_).detach().cpu()
+            pred[pred >= 0.5] = 1
+            pred[pred < 0.5] = 0
+            preds.extend(
+                pred.tolist()
+            )
+        else:
+            preds.extend(logits_.argmax(dim=1).detach().cpu().tolist())
         losses.append(loss.item())
-        preds.extend(logits_.argmax(dim=1).detach().cpu().tolist())
         labels.extend(y.detach().cpu().tolist())
         logits.extend(logits_.detach().cpu().tolist())
         features.extend(h.detach().cpu().tolist())
 
-    acc = np.mean(np.array(preds) == np.array(labels))
+    if multilabel:
+        accs = [balanced_accuracy_score(np.array(labels)[:,i], np.array(preds)[:,i]) for i in range(np.array(preds).shape[1])]
+        acc = sum(accs) / len(accs)
+    else:
+        acc = np.mean(np.array(preds) == np.array(labels))
     loss = np.mean(losses)
     return {
         "loss": loss,
