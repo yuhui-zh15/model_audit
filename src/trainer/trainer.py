@@ -21,6 +21,7 @@ def run_one_epoch(
     eval: bool = False,
     verbose: bool = False,
     multilabel: bool = False,
+    normalize: bool = True,
 ) -> Dict:
 
     if not eval:
@@ -46,6 +47,9 @@ def run_one_epoch(
                 h = clip_model.encode_text(x)
             else:
                 raise ValueError(f"Invalid modality: {modality}")
+
+        if normalize:
+            h = F.normalize(h)
 
         logits_ = model(h)
 
