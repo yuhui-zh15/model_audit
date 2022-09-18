@@ -5,7 +5,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from sklearn.metrics import balanced_accuracy_score  # type: ignore
+from sklearn.metrics import balanced_accuracy_score, f1_score  # type: ignore
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm import trange  # type: ignore
 
@@ -102,10 +102,21 @@ def evaluate(dataloader, model, device="cuda"):
             losses.append(loss.item())
     preds = np.array(preds)
     labels = np.array(labels)
+    micro_f1 = f1_score(labels, preds, average="micro")
+    macro_f1 = f1_score(labels, preds, average="macro")
+    weighted_f1 = f1_score(labels, preds, average="weighted")
+    samples_f1 = f1_score(labels, preds, average="samples")
     baccs = [balanced_accuracy_score(preds[:, i], labels[:, i]) for i in range(80)]
     bacc = np.mean(baccs)
     loss = np.mean(losses)
-    return bacc, loss, preds, labels
+    return {
+        "micro_f1": micro_f1,
+        "macro_f1": macro_f1,
+        "weighted_f1": weighted_f1,
+        "samples_f1": samples_f1,
+        "bacc": bacc,
+        "loss": loss,
+    }
 
 
 if sys.argv[1] == "sgd":
@@ -125,39 +136,18 @@ else:
     raise ValueError("invalid argument")
 
 wandb.init(project="coco_classification_clip_vitb32")
-logs = []
-for i in trange(100):
-    img_acc_train, img_loss_train, _, _ = evaluate(img_dataloader_train, linear)
-    text_acc_train, text_loss_train, _, _ = evaluate(txt_dataloader_train, linear)
-    img_acc_val, img_loss_val, _, _ = evaluate(img_dataloader_val, linear)
-    text_acc_val, text_loss_val, _, _ = evaluate(txt_dataloader_val, linear)
-    logs.append(
-        [
-            (img_acc_train, img_acc_val, text_acc_train, text_acc_val),
-            (img_loss_train, img_loss_val, text_loss_train, text_loss_val),
-        ]
-    )
-    wandb.log(
-        {
-            "train/img_acc": img_acc_train,
-            "val/img_acc": img_acc_val,
-            "train/text_acc": text_acc_train,
-            "val/text_acc": text_acc_val,
-            "train/img_loss": img_loss_train,
-            "val/img_loss": img_loss_val,
-            "train/text_loss": text_loss_train,
-            "val/text_loss": text_loss_val,
-        }
-    )
+for i in trange(25):
+    img_results_train = evaluate(img_dataloader_train, linear)
+    img_results_val = evaluate(img_dataloader_val, linear)
+    txt_results_train = evaluate(txt_dataloader_train, linear)
+    txt_results_val = evaluate(txt_dataloader_val, linear)
+    wandb.log({f"train/img_{k}": v for k, v in img_results_train.items()})
+    wandb.log({f"val/img_{k}": v for k, v in img_results_val.items()})
+    wandb.log({f"train/txt_{k}": v for k, v in txt_results_train.items()})
+    wandb.log({f"val/txt_{k}": v for k, v in txt_results_val.items()})
 
     train_one_epoch(img_dataloader_train, linear, optimizer)
 
-
-json.dump(
-    logs,
-    open(f"training_logs_1layer_img_{sys.argv[1:]}.json", "w"),
-    indent=2,
-)
 wandb.finish()
 
 torch.save(linear.state_dict(), f"linear_{sys.argv[1:]}.pt")
