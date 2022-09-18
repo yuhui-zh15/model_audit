@@ -27,9 +27,11 @@ class Linear(nn.Module):
     Linear layer.
     """
 
-    def __init__(self, input_size: int = 512, output_size: int = 1000) -> None:
+    def __init__(
+        self, input_size: int = 512, output_size: int = 1000, bias: bool = True
+    ) -> None:
         super().__init__()
-        self.fc = nn.Linear(input_size, output_size)
+        self.fc = nn.Linear(input_size, output_size, bias=bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.fc(x)

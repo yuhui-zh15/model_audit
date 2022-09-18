@@ -1,5 +1,4 @@
 import json
-import sys
 from typing import Union
 
 import clip  # type: ignore
@@ -16,7 +15,7 @@ COCO_NUM_CLS = 80
 N_EPOCHS = 50
 
 
-def train_coco(train_modality: str):
+def train_coco(train_modality: str) -> None:
     wandb.init(project="mmdebug")
 
     clip_model, transform = clip.load(name=CLIP_MODEL, device="cuda")
@@ -112,5 +111,61 @@ def train_coco(train_modality: str):
     torch.save(model.state_dict(), "coco_linear_model.pt")
 
 
+def extract_features():
+    clip_model, transform = clip.load(name=CLIP_MODEL, device="cuda")
+    clip_model = clip_model.float()
+    model = Linear(clip_model.visual.output_dim, COCO_NUM_CLS).cuda()
+
+    data = [json.loads(line) for line in open(f"{COCO_PATH}/attributes.jsonl")]
+
+    image_dataset = ImageDataset(data)
+    image_dataloader = create_dataloader(
+        dataset=image_dataset, modality="image", transform=transform, shuffle=False
+    )
+
+    text_dataset = TextDataset(data)
+    text_dataloader = create_dataloader(
+        dataset=text_dataset, modality="text", shuffle=False
+    )
+
+    image_metrics = run_one_epoch(
+        dataloader=image_dataloader,
+        model=model,
+        clip_model=clip_model,
+        modality="image",
+        opt=None,
+        epoch_idx=-1,
+        eval=True,
+        verbose=True,
+        multilabel=True,
+        normalize=False,
+    )
+
+    text_metrics = run_one_epoch(
+        dataloader=text_dataloader,
+        model=model,
+        clip_model=clip_model,
+        modality="text",
+        opt=None,
+        epoch_idx=-1,
+        eval=True,
+        verbose=True,
+        multilabel=True,
+        normalize=False,
+    )
+
+    assert image_metrics["labels"] == text_metrics["labels"]
+
+    torch.save(
+        {
+            "image_features": image_metrics["features"],
+            "text_features": text_metrics["features"],
+            "labels": image_metrics["labels"],
+        },
+        "coco_features_vitb32.pt",
+    )
+
+
 if __name__ == "__main__":
-    train_coco(sys.argv[1])
+    # train_coco(sys.argv[1])
+    extract_features()
