@@ -30,6 +30,13 @@ if sys.argv[2] == "centering":
     txt_features = txt_features - txt_features.mean(0)
     img_features = F.normalize(img_features)
     txt_features = F.normalize(txt_features)
+elif sys.argv[2] == "globalbn":
+    img_features = img_features - img_features.mean(0)
+    txt_features = txt_features - txt_features.mean(0)
+    img_features /= img_features.std(0)
+    txt_features /= txt_features.std(0)
+    img_features = F.normalize(img_features)
+    txt_features = F.normalize(txt_features)
 elif sys.argv[2] == "original":
     pass
 else:
@@ -55,7 +62,14 @@ if sys.argv[3] == "no_bias":
 elif sys.argv[3] == "bias":
     print("With bias")
     linear = nn.Linear(512, 80).cuda()
-    linear.bias.data.zero_()
+    # linear.bias.data.zero_()
+elif sys.argv[3] == "mlp":
+    print("MLP")
+    linear = nn.Sequential(  # type: ignore
+        nn.Linear(512, 512),
+        nn.ReLU(),
+        nn.Linear(512, 80),
+    ).cuda()
 else:
     raise ValueError("Unknown bias method")
 
@@ -146,7 +160,12 @@ for i in trange(25):
     wandb.log({f"train/txt_{k}": v for k, v in txt_results_train.items()})
     wandb.log({f"val/txt_{k}": v for k, v in txt_results_val.items()})
 
-    train_one_epoch(img_dataloader_train, linear, optimizer)
+    if sys.argv[4] == "img":
+        train_one_epoch(img_dataloader_train, linear, optimizer)
+    elif sys.argv[4] == "txt":
+        train_one_epoch(txt_dataloader_train, linear, optimizer)
+    else:
+        raise ValueError("invalid argument")
 
 wandb.finish()
 
