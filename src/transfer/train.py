@@ -70,6 +70,20 @@ elif sys.argv[3] == "mlp":
         nn.ReLU(),
         nn.Linear(512, 80),
     ).cuda()
+elif sys.argv[3] == "prototype":
+    print("Prototype")
+    linear = nn.Linear(512, 80, bias=False).cuda()
+    classmeans = torch.zeros(80, 512)
+    for i in range(80):
+        if sys.argv[4] == "img":
+            classmeans[i] = F.normalize(
+                img_features_train[img_labels_train[:, i] == 1].mean(0), dim=0
+            )
+        elif sys.argv[4] == "txt":
+            classmeans[i] = F.normalize(
+                txt_features_train[txt_labels_train[:, i] == 1].mean(0), dim=0
+            )
+    linear.weight.data = classmeans.cuda()
 else:
     raise ValueError("Unknown bias method")
 
@@ -149,8 +163,11 @@ elif sys.argv[1] == "adam":
 else:
     raise ValueError("invalid argument")
 
+n_epochs = 100
+# lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, n_epochs)
+
 wandb.init(project="coco_classification_clip_vitb32")
-for i in trange(25):
+for i in trange(n_epochs):
     img_results_train = evaluate(img_dataloader_train, linear)
     img_results_val = evaluate(img_dataloader_val, linear)
     txt_results_train = evaluate(txt_dataloader_train, linear)
@@ -160,12 +177,17 @@ for i in trange(25):
     wandb.log({f"train/txt_{k}": v for k, v in txt_results_train.items()})
     wandb.log({f"val/txt_{k}": v for k, v in txt_results_val.items()})
 
+    if sys.argv[3] == "prototype":
+        break
+
     if sys.argv[4] == "img":
         train_one_epoch(img_dataloader_train, linear, optimizer)
     elif sys.argv[4] == "txt":
         train_one_epoch(txt_dataloader_train, linear, optimizer)
     else:
         raise ValueError("invalid argument")
+    wandb.log({"lr": optimizer.param_groups[0]["lr"]})
+    # lr_scheduler.step()
 
 wandb.finish()
 
