@@ -53,7 +53,7 @@ def create_triangle_square_classification_dataset():
             label = 0
         data.append(
             {
-                "image": f"{path}/processed_attribute_dataset/{i}.png",
+                "image": f"{path}/processed_attribute_dataset/images/{i}.png",
                 "attributes": {
                     "color": color,
                     "angle": angle,
