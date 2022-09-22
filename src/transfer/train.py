@@ -11,7 +11,9 @@ from tqdm import trange  # type: ignore
 
 import wandb
 
-FEATURE_PATH = "/pasteur/u/yuhuiz/mmdebug/src/pytorch_cache/coco_features_vitb32.pt"
+FEATURE_PATH = (
+    "/pasteur/u/yuhuiz/mmdebug/src/pytorch_cache/features/coco_features_vitb32.pt"
+)
 LABEL_PATH = "/pasteur/u/yuhuiz/data/COCO/processed_attribute_dataset/attributes.jsonl"
 
 
@@ -30,6 +32,12 @@ if sys.argv[2] == "centering":
     txt_features = txt_features - txt_features.mean(0)
     img_features = F.normalize(img_features)
     txt_features = F.normalize(txt_features)
+elif sys.argv[2] == "centering_norenorm":
+    img_features = img_features - img_features.mean(0)
+    txt_features = txt_features - txt_features.mean(0)
+elif sys.argv[2] == "normcentering_norenorm":
+    img_features = img_features - F.normalize(img_features.mean(0), dim=0)
+    txt_features = txt_features - F.normalize(txt_features.mean(0), dim=0)
 elif sys.argv[2] == "globalbn":
     img_features = img_features - img_features.mean(0)
     txt_features = txt_features - txt_features.mean(0)
@@ -163,7 +171,7 @@ elif sys.argv[1] == "adam":
 else:
     raise ValueError("invalid argument")
 
-n_epochs = 100
+n_epochs = 50
 # lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, n_epochs)
 
 wandb.init(project="coco_classification_clip_vitb32")
