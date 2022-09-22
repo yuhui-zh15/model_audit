@@ -80,7 +80,7 @@ def extract_image_features(path: str):
         normalize=False,
     )
 
-    torch.save(image_metrics["features"], f"{path.split('/')[-1]}_features_vitb32.pt")
+    torch.save(image_metrics["features"], f"{path.split('/')[-3]}_features_vitb32.pt")
 
 
 def train_image_model(data_path: str, feature_path: str):
@@ -137,7 +137,7 @@ def train_image_model(data_path: str, feature_path: str):
         metrics = evaluate(val_dataloader, model)
         print(epoch_idx, metrics)
 
-    torch.save(model.state_dict(), "fairface_linear.pt")
+    torch.save(model.state_dict(), "fairface_linear_model.pt")
 
     # ages = set([item["attributes"]["age"] for item in data])
     # races = set([item["attributes"]["race"] for item in data])
@@ -159,6 +159,43 @@ def train_image_model(data_path: str, feature_path: str):
     #     "60-69": 7.6 / 100,
     #     "more than 70": 9.9 / 100
     # }
+
+
+def train_image_model_dspites(data_path: str, feature_path: str):
+    data = [json.loads(line) for line in open(data_path)]
+    labels = torch.tensor([item["label"] for item in data])
+
+    all_train_idxs = [
+        i for i, item in enumerate(data) if item["attributes"]["color"] == "red"
+    ]
+
+    random.seed(1234)
+    train_idxs = random.sample(all_train_idxs, int(len(all_train_idxs) * 0.9))
+    val_idxs = [idx for idx in range(len(data)) if idx not in train_idxs]
+    json.dump([train_idxs, val_idxs], open("train_val_idxs.json", "w"))
+    print(len(train_idxs), len(val_idxs))
+
+    features = F.normalize(torch.tensor(torch.load(feature_path)))
+
+    train_features = features[train_idxs]
+    train_labels = labels[train_idxs]
+    val_features = features[val_idxs]
+    val_labels = labels[val_idxs]
+
+    train_dataset = TensorDataset(train_features, train_labels)
+    val_dataset = TensorDataset(val_features, val_labels)
+    train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+
+    model = Linear(512, 3).cuda()
+    opt = torch.optim.Adam(model.parameters(), lr=1e-3)
+
+    for epoch_idx in range(25):
+        train_one_epoch(train_dataloader, model, opt)
+        metrics = evaluate(val_dataloader, model)
+        print(epoch_idx, metrics)
+
+    torch.save(model.state_dict(), "dspites_linear_model.pt")
 
 
 def train_waterbird():
@@ -323,4 +360,5 @@ if __name__ == "__main__":
     # train_waterbird()
     # eval_waterbird()
     # extract_image_features(sys.argv[1])
-    train_image_model(sys.argv[1], sys.argv[2])
+    # train_image_model(sys.argv[1], sys.argv[2])
+    train_image_model_dspites(sys.argv[1], sys.argv[2])
