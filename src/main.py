@@ -1,7 +1,6 @@
 import itertools
 import json
 import random
-import sys
 
 import clip  # type: ignore
 import numpy as np
@@ -83,7 +82,7 @@ def extract_image_features(path: str):
     torch.save(image_metrics["features"], f"{path.split('/')[-3]}_features_vitb32.pt")
 
 
-def train_image_model(data_path: str, feature_path: str):
+def train_image_model_fairface(data_path: str, feature_path: str, close_gap: bool):
     data = [json.loads(line) for line in open(data_path)]
     labels = torch.tensor(
         [1 if item["attributes"]["gender"] == "Female" else 0 for item in data]
@@ -118,6 +117,11 @@ def train_image_model(data_path: str, feature_path: str):
     # race_distribution = Counter([item["attributes"]["race"] for item in sampled_train_data]).most_common()
 
     features = F.normalize(torch.tensor(torch.load(feature_path)))
+
+    coco_features = torch.load("pytorch_cache/features/coco_features_vitb32.pt")
+    coco_mean = F.normalize(torch.tensor(coco_features["image_features"])).mean(0)
+    if close_gap:
+        features = features - coco_mean
 
     train_features = features[sampled_train_idxs]
     train_labels = labels[sampled_train_idxs]
@@ -196,6 +200,50 @@ def train_image_model_dspites(data_path: str, feature_path: str):
         print(epoch_idx, metrics)
 
     torch.save(model.state_dict(), "dspites_linear_model.pt")
+
+
+def train_image_model_waterbird(
+    data_path: str, feature_path: str, close_gap: bool, coco_norm: bool = True
+):
+    data = [json.loads(line) for line in open(data_path)]
+    labels = torch.tensor([item["attributes"]["waterbird"] for item in data])
+
+    train_idxs = [
+        i for i, item in enumerate(data) if item["attributes"]["split"] == "train"
+    ]
+    val_idxs = [
+        i for i, item in enumerate(data) if item["attributes"]["split"] == "val"
+    ]
+
+    features = F.normalize(torch.tensor(torch.load(feature_path)))
+
+    coco_features = torch.load("pytorch_cache/features/coco_features_vitb32.pt")
+    coco_mean = F.normalize(torch.tensor(coco_features["image_features"])).mean(0)
+    if close_gap:
+        if coco_norm:
+            features = features - coco_mean
+        else:
+            features = features - features.mean(0)
+
+    train_features = features[train_idxs]
+    train_labels = labels[train_idxs]
+    val_features = features[val_idxs]
+    val_labels = labels[val_idxs]
+
+    train_dataset = TensorDataset(train_features, train_labels)
+    val_dataset = TensorDataset(val_features, val_labels)
+    train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+
+    model = Linear(512, 2).cuda()
+    opt = torch.optim.Adam(model.parameters(), lr=1e-3)
+
+    for epoch_idx in range(25):
+        train_one_epoch(train_dataloader, model, opt)
+        metrics = evaluate(val_dataloader, model)
+        print(epoch_idx, metrics)
+
+    torch.save(model.state_dict(), f"waterbird_linear_model_gap={not close_gap}.pt")
 
 
 def train_waterbird():
@@ -360,5 +408,24 @@ if __name__ == "__main__":
     # train_waterbird()
     # eval_waterbird()
     # extract_image_features(sys.argv[1])
-    # train_image_model(sys.argv[1], sys.argv[2])
-    train_image_model_dspites(sys.argv[1], sys.argv[2])
+    # train_image_model_dspites(sys.argv[1], sys.argv[2])
+    train_image_model_waterbird(
+        "/pasteur/u/yuhuiz/data/Waterbird/processed_attribute_dataset/attributes.jsonl",
+        "/pasteur/u/yuhuiz/mmdebug/src/pytorch_cache/features/Waterbird_features_vitb32.pt",
+        False,
+    )
+    train_image_model_waterbird(
+        "/pasteur/u/yuhuiz/data/Waterbird/processed_attribute_dataset/attributes.jsonl",
+        "/pasteur/u/yuhuiz/mmdebug/src/pytorch_cache/features/Waterbird_features_vitb32.pt",
+        True,
+    )
+    train_image_model_fairface(
+        "/pasteur/u/yuhuiz/data/FairFace/processed_attribute_dataset/attributes.jsonl",
+        "/pasteur/u/yuhuiz/mmdebug/src/pytorch_cache/features/FairFace_features_vitb32.pt",
+        False,
+    )
+    train_image_model_fairface(
+        "/pasteur/u/yuhuiz/data/FairFace/processed_attribute_dataset/attributes.jsonl",
+        "/pasteur/u/yuhuiz/mmdebug/src/pytorch_cache/features/FairFace_features_vitb32.pt",
+        True,
+    )
