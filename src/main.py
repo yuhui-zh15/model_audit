@@ -455,7 +455,7 @@ def train_waterbird():
     model = Linear(clip_model.visual.output_dim, 2).cuda()
 
     image_dataset_train = AttributeDataset(
-        path="/pasteur/u/yuhuiz/data/Waterbird/processed_attribute_dataset/",
+        path="data/Waterbird/processed_attribute_dataset/",
         filter_func=lambda x: x["attributes"]["split"] == "train",
         label_func=lambda x: x["attributes"]["waterbird"],
     )
@@ -464,7 +464,7 @@ def train_waterbird():
     )
 
     image_dataset_val = AttributeDataset(
-        path="/pasteur/u/yuhuiz/data/Waterbird/processed_attribute_dataset/",
+        path="data/Waterbird/processed_attribute_dataset/",
         filter_func=lambda x: x["attributes"]["split"] == "val",
         label_func=lambda x: x["attributes"]["waterbird"],
     )
@@ -526,9 +526,7 @@ def eval_waterbird():
 
     image_data = [
         json.loads(line)
-        for line in open(
-            "/pasteur/u/yuhuiz/data/Waterbird/processed_attribute_dataset/attributes.jsonl"
-        )
+        for line in open("data/Waterbird/processed_attribute_dataset/attributes.jsonl")
     ]
 
     def filter_fn(x):
@@ -613,30 +611,30 @@ if __name__ == "__main__":
     # extract_image_features(sys.argv[1])
     # train_image_model_dspites(sys.argv[1], sys.argv[2])
     # train_image_model_waterbird(
-    #     "/pasteur/u/yuhuiz/data/Waterbird/processed_attribute_dataset/attributes.jsonl",
-    #     "/pasteur/u/yuhuiz/mmdebug/src/pytorch_cache/features/Waterbird_features_vitb32.pt",
+    #     "data/Waterbird/processed_attribute_dataset/attributes.jsonl",
+    #     "mmdebug/src/pytorch_cache/features/Waterbird_features_vitb32.pt",
     #     False,
     # )
     # train_image_model_waterbird(
-    #     "/pasteur/u/yuhuiz/data/Waterbird/processed_attribute_dataset/attributes.jsonl",
-    #     "/pasteur/u/yuhuiz/mmdebug/src/pytorch_cache/features/Waterbird_features_vitb32.pt",
+    #     "data/Waterbird/processed_attribute_dataset/attributes.jsonl",
+    #     "mmdebug/src/pytorch_cache/features/Waterbird_features_vitb32.pt",
     #     True,
     # )
     # train_image_model_fairface(
-    #     "/pasteur/u/yuhuiz/data/FairFace/processed_attribute_dataset/attributes.jsonl",
-    #     "/pasteur/u/yuhuiz/mmdebug/src/pytorch_cache/features/FairFace_features_vitb32.pt",
+    #     "data/FairFace/processed_attribute_dataset/attributes.jsonl",
+    #     "mmdebug/src/pytorch_cache/features/FairFace_features_vitb32.pt",
     #     False,
     # )
     # train_image_model_fairface(
-    #     "/pasteur/u/yuhuiz/data/FairFace/processed_attribute_dataset/attributes.jsonl",
-    #     "/pasteur/u/yuhuiz/mmdebug/src/pytorch_cache/features/FairFace_features_vitb32.pt",
+    #     "data/FairFace/processed_attribute_dataset/attributes.jsonl",
+    #     "mmdebug/src/pytorch_cache/features/FairFace_features_vitb32.pt",
     #     True,
     # )
     # train_image_model_waterbird_dro(
-    #     "/pasteur/u/yuhuiz/data/Waterbird/processed_attribute_dataset/attributes.jsonl",
-    #     "/pasteur/u/yuhuiz/mmdebug/src/pytorch_cache/features/Waterbird_features_vitb32.pt"
+    #     "data/Waterbird/processed_attribute_dataset/attributes.jsonl",
+    #     "mmdebug/src/pytorch_cache/features/Waterbird_features_vitb32.pt"
     # )
     train_image_model_fairface_dro(
-        "/pasteur/u/yuhuiz/data/FairFace/processed_attribute_dataset/attributes.jsonl",
-        "/pasteur/u/yuhuiz/mmdebug/src/pytorch_cache/features/FairFace_features_vitb32.pt",
+        "data/FairFace/processed_attribute_dataset/attributes.jsonl",
+        "mmdebug/src/pytorch_cache/features/FairFace_features_vitb32.pt",
     )

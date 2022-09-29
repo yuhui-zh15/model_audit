@@ -21,7 +21,7 @@ def square_img(color="white", angle=0, scale=1.0):
 
 def create_triangle_square_classification_dataset():
     random.seed(1234)
-    path = "/pasteur/u/yuhuiz/data/TriangleSquare"
+    path = "data/TriangleSquare"
 
     os.mkdir(f"{path}/processed_attribute_dataset")
     os.mkdir(f"{path}/processed_attribute_dataset/images")

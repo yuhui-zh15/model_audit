@@ -11,10 +11,8 @@ from tqdm import trange  # type: ignore
 
 import wandb
 
-FEATURE_PATH = (
-    "/pasteur/u/yuhuiz/mmdebug/src/pytorch_cache/features/coco_features_vitb32.pt"
-)
-LABEL_PATH = "/pasteur/u/yuhuiz/data/COCO/processed_attribute_dataset/attributes.jsonl"
+FEATURE_PATH = "mmdebug/src/pytorch_cache/features/coco_features_vitb32.pt"
+LABEL_PATH = "data/COCO/processed_attribute_dataset/attributes.jsonl"
 
 
 features = torch.load(FEATURE_PATH)

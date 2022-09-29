@@ -16,11 +16,11 @@ from trainer import run_one_epoch
 from utils import computing_subgroup_metrics, subgrouping
 
 DATASET_PATHS = {
-    "waterbird": "/pasteur/u/yuhuiz/data/Waterbird/processed_attribute_dataset/attributes.jsonl",
-    "waterbird_generated": "/pasteur/u/yuhuiz/data/GeneratedWaterBird/waterbird_text_data_generated_images_n=20.jsonl",
-    "triangelsquare": "/pasteur/u/yuhuiz/data/TriangleSquare/processed_attribute_dataset/attributes.jsonl",
-    "fairface": "/pasteur/u/yuhuiz/data/FairFace/processed_attribute_dataset/attributes.jsonl",
-    "celeba": "/pasteur/u/yuhuiz/data/CelebA/processed_attribute_dataset/attributes.jsonl",
+    "waterbird": "data/Waterbird/processed_attribute_dataset/attributes.jsonl",
+    "waterbird_generated": "data/GeneratedWaterBird/waterbird_text_data_generated_images_n=20.jsonl",
+    "triangelsquare": "data/TriangleSquare/processed_attribute_dataset/attributes.jsonl",
+    "fairface": "data/FairFace/processed_attribute_dataset/attributes.jsonl",
+    "celeba": "data/CelebA/processed_attribute_dataset/attributes.jsonl",
 }
 
 # TODO: will remove

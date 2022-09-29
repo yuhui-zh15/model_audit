@@ -10,13 +10,11 @@ from datasets import (
     create_dataloader,
 )
 
-CELEBA_PATH = "/pasteur/u/yuhuiz/data/CelebA/processed_attribute_dataset"
-WATERBIRDS_PATH = "/pasteur/u/yuhuiz/data/Waterbird/processed_attribute_dataset"
-FAIRFACE_PATH = "/pasteur/u/yuhuiz/data/FairFace/processed_attribute_dataset"
-TRIANGLESQUARE_PATH = (
-    "/pasteur/u/yuhuiz/data/TriangleSquare/processed_attribute_dataset"
-)
-COCO_PATH = "/pasteur/u/yuhuiz/data/COCO/processed_attribute_dataset"
+CELEBA_PATH = "data/CelebA/processed_attribute_dataset"
+WATERBIRDS_PATH = "data/Waterbird/processed_attribute_dataset"
+FAIRFACE_PATH = "data/FairFace/processed_attribute_dataset"
+TRIANGLESQUARE_PATH = "data/TriangleSquare/processed_attribute_dataset"
+COCO_PATH = "data/COCO/processed_attribute_dataset"
 
 
 def test_image_dataset():

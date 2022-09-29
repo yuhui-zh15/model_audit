@@ -3,7 +3,7 @@ import os
 
 import pandas as pd  # type: ignore
 
-base_dir = "/pasteur/u/yuhuiz/data/FairFace"
+base_dir = "data/FairFace"
 annotations_train = pd.read_csv(f"{base_dir}/raw/fairface_label_train.csv").to_dict(
     orient="records"
 )

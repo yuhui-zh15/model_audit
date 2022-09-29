@@ -53,7 +53,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser("Genearte image from text")
     parser.add_argument(
         "--prompt_path",
-        default="/pasteur/u/yuhuiz/mars_develop/waterbird_text_data.jsonl",
+        default="waterbird_text_data.jsonl",
         type=str,
         help="Confounder to examine",
     )
@@ -62,7 +62,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--output_dir",
-        default="/pasteur/u/yuhuiz/data/GeneratedWaterBird",
+        default="data/GeneratedWaterBird",
         type=str,
         help="Confounder to examine",
     )

@@ -28,7 +28,7 @@ def circle_img(color="white", angle=0, scale=1.0):
 
 def create_dspites_dataset():
     random.seed(1234)
-    path = "/pasteur/u/yuhuiz/data/dSpites"
+    path = "data/dSpites"
 
     os.mkdir(f"{path}/processed_attribute_dataset")
     os.mkdir(f"{path}/processed_attribute_dataset/images")

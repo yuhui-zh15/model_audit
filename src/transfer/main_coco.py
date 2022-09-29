@@ -10,7 +10,7 @@ from models import Linear
 from trainer import run_one_epoch
 
 CLIP_MODEL = "ViT-B/32"
-COCO_PATH = "/pasteur/u/yuhuiz/data/COCO/processed_attribute_dataset"
+COCO_PATH = "data/COCO/processed_attribute_dataset"
 COCO_NUM_CLS = 80
 N_EPOCHS = 50
 

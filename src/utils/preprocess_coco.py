@@ -4,7 +4,7 @@ import random
 from collections import defaultdict
 from typing import Dict, List
 
-base_dir = "/pasteur/u/yuhuiz/data/COCO"
+base_dir = "data/COCO"
 
 data: List[Dict] = []
 
