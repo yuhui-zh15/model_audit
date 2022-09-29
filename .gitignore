@@ -1,4 +1,6 @@
 wandb/
+pytorch_cache/
+*.json
 *.pt
 
 # Byte-compiled / optimized / DLL files

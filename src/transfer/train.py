@@ -152,6 +152,7 @@ def evaluate(dataloader, model, device="cuda"):
         "samples_f1": samples_f1,
         "bacc": bacc,
         "loss": loss,
+        "preds": preds,
     }
 
 
@@ -162,16 +163,32 @@ if sys.argv[1] == "sgd":
         momentum=0.9,
         weight_decay=0,
     )
+elif sys.argv[1] == "sgddecay":
+    optimizer = torch.optim.Adam(  # type: ignore
+        [
+            {"params": linear.weight, "weight_decay": 1e-4},
+            {"params": linear.bias, "weight_decay": 0},
+        ],
+        lr=1e-3,
+    )
 elif sys.argv[1] == "adam":
     optimizer = torch.optim.Adam(  # type: ignore
         linear.parameters(),
         lr=1e-3,
         weight_decay=0,
     )
+elif sys.argv[1] == "adamdecay":
+    optimizer = torch.optim.Adam(  # type: ignore
+        [
+            {"params": linear.weight, "weight_decay": 1e-4},
+            {"params": linear.bias, "weight_decay": 0},
+        ],
+        lr=1e-3,
+    )
 else:
     raise ValueError("invalid argument")
 
-n_epochs = 50
+n_epochs = 25
 # lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, n_epochs)
 
 wandb.init(project="coco_classification_clip_vitb32")
@@ -180,10 +197,22 @@ for i in trange(n_epochs):
     img_results_val = evaluate(img_dataloader_val, linear)
     txt_results_train = evaluate(txt_dataloader_train, linear)
     txt_results_val = evaluate(txt_dataloader_val, linear)
+    img_preds_val = img_results_val["preds"]
+    txt_preds_val = txt_results_val["preds"]
+    consistency = np.mean((img_preds_val == txt_preds_val).astype(np.float32))
+    exact_match_consistency = np.mean(
+        (img_preds_val == txt_preds_val).all(1).astype(np.float32)
+    )
     wandb.log({f"train/img_{k}": v for k, v in img_results_train.items()})
     wandb.log({f"val/img_{k}": v for k, v in img_results_val.items()})
     wandb.log({f"train/txt_{k}": v for k, v in txt_results_train.items()})
     wandb.log({f"val/txt_{k}": v for k, v in txt_results_val.items()})
+    wandb.log(
+        {
+            "val/consistency": consistency,
+            "val/exact_match_consistency": exact_match_consistency,
+        }
+    )
 
     if sys.argv[3] == "prototype":
         break
