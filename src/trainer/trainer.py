@@ -80,12 +80,42 @@ def run_one_epoch(
         acc = sum(accs) / len(accs)
     else:
         acc = np.mean(np.array(preds) == np.array(labels))
-    loss = np.mean(losses)
+    mean_loss = np.mean(losses)
     return {
-        "loss": loss,
+        "loss": mean_loss,
         "acc": acc,
         "preds": preds,
         "labels": labels,
         "logits": logits,
         "features": features,
     }
+
+
+def extract_features(
+    dataloader: DataLoader, clip_model: CLIP, modality: str, verbose: bool = False
+) -> torch.Tensor:
+
+    clip_model = clip_model.eval()
+
+    features = []
+    bar = (
+        tqdm(dataloader, desc=f"Extracting features for {modality}")
+        if verbose
+        else dataloader
+    )
+    for batch_idx, batch in enumerate(bar):
+        x, _ = batch
+        x = x.cuda()
+
+        with torch.no_grad():
+            if modality == "image":
+                h = clip_model.encode_image(x)
+            elif modality == "text":
+                h = clip_model.encode_text(x)
+            else:
+                raise ValueError(f"Invalid modality: {modality}")
+
+        features.extend(h.detach().cpu().tolist())
+
+    features_tensor = torch.tensor(features)
+    return features_tensor

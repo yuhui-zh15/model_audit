@@ -1,1 +1,1 @@
-from .trainer import run_one_epoch  # noqa
+from .trainer import extract_features, run_one_epoch  # noqa

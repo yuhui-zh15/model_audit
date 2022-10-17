@@ -12,15 +12,9 @@ def create_dataloader(
     batch_size: int = 32,
     shuffle: bool = False,
     num_workers: int = 4,
-    paired: bool = False,
 ) -> DataLoader:
     def collate_fn(batch: List) -> Tuple[torch.Tensor, torch.Tensor]:
-        if paired and modality == "image":
-            raw_inputs, _, labels, _ = zip(*batch)
-        elif paired and modality == "text":
-            _, raw_inputs, labels, _ = zip(*batch)
-        else:
-            raw_inputs, labels, _ = zip(*batch)
+        raw_inputs, labels, _ = zip(*batch)
         if modality == "image":
             assert (
                 transform is not None
@@ -28,6 +22,8 @@ def create_dataloader(
             inputs = torch.stack([transform(image) for image in raw_inputs], dim=0)
         elif modality == "text":
             inputs = clip.tokenize(raw_inputs)
+        else:
+            raise ValueError(f"Unknown modality: {modality}")
         labels = torch.tensor(labels)
         return inputs, labels
 

@@ -341,7 +341,9 @@ def train_image_model_waterbird_dro(data_path: str, feature_path: str):
         print(epoch_idx, metrics)
 
         preds, labels = metrics["preds"], metrics["labels"]
-        subgroups = subgrouping(np.array(data)[val_idxs], ["waterbird", "waterplace"])
+        subgroups = subgrouping(
+            list(np.array(data)[val_idxs]), ["waterbird", "waterplace"]
+        )
         subgroup_metrics = computing_subgroup_metrics(preds, labels, subgroups)  # type: ignore
         print(subgroup_metrics)
 
@@ -442,7 +444,7 @@ def train_image_model_fairface_dro(data_path: str, feature_path: str):
         print(epoch_idx, metrics)
 
         preds, labels = metrics["preds"], metrics["labels"]
-        subgroups = subgrouping(np.array(data)[val_idxs], ["race"])
+        subgroups = subgrouping(list(np.array(data)[val_idxs]), ["race"])
         subgroup_metrics = computing_subgroup_metrics(preds, labels, subgroups)  # type: ignore
         print(subgroup_metrics)
 

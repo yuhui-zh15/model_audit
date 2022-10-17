@@ -1,14 +1,6 @@
-import json
-
 import torch
 
-from datasets import (
-    AttributeDataset,
-    ImageDataset,
-    PairedDataset,
-    TextDataset,
-    create_dataloader,
-)
+from datasets import AttributeDataset, ImageDataset, TextDataset, create_dataloader
 
 CELEBA_PATH = "data/CelebA/processed_attribute_dataset"
 WATERBIRDS_PATH = "data/Waterbird/processed_attribute_dataset"
@@ -95,23 +87,6 @@ def test_text_dataset():
     assert dataloader is not None
 
 
-def test_paired_dataset_coco():
-    def filter_func(x):
-        return x["attributes"]["split"] == "val"
-
-    data = [json.loads(line) for line in open(f"{COCO_PATH}/attributes.jsonl")]
-    filtered_data = [x for x in data if filter_func(x)]
-    dataset = PairedDataset(data=filtered_data)
-    assert len(dataset) == 5000
-    dataloader = create_dataloader(
-        dataset=dataset,
-        modality="image",
-        transform=lambda x: torch.zeros(100),
-        paired=True,
-    )
-    assert dataloader is not None
-
-
 if __name__ == "__main__":
     test_image_dataset()
     test_attribute_dataset_celeba()
@@ -119,4 +94,3 @@ if __name__ == "__main__":
     test_attribute_dataset_fairface()
     test_attribute_dataset_trianglesquare()
     test_text_dataset()
-    test_paired_dataset_coco()
