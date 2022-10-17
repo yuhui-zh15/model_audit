@@ -20,6 +20,7 @@ def create_dataloader(
                 transform is not None
             ), "transform must be provided for image modality"
             inputs = torch.stack([transform(image) for image in raw_inputs], dim=0)
+            _ = [image.close() for image in raw_inputs]
         elif modality == "text":
             inputs = clip.tokenize(raw_inputs)
         else:
