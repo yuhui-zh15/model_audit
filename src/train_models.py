@@ -1,5 +1,6 @@
 import json
 import random
+from typing import Optional
 
 import numpy as np
 import torch
@@ -12,7 +13,12 @@ from utils import LossComputer, computing_subgroup_metrics, subgrouping
 CLIP_MODEL = "ViT-B/32"
 
 
-def train_one_epoch(dataloader, model, optimizer, device="cuda"):
+def train_one_epoch(
+    dataloader: torch.utils.data.DataLoader,
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    device: str = "cuda",
+):
     model.train()
     for batch in dataloader:
         x, y = batch
@@ -24,7 +30,13 @@ def train_one_epoch(dataloader, model, optimizer, device="cuda"):
         optimizer.step()
 
 
-def train_one_epoch_dro(dataloader, model, optimizer, loss_fn, device="cuda"):
+def train_one_epoch_dro(
+    dataloader: torch.utils.data.DataLoader,
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    loss_fn: LossComputer,
+    device: str = "cuda",
+):
     model.train()
     for batch in dataloader:
         x, y, gidxs = batch
@@ -36,7 +48,11 @@ def train_one_epoch_dro(dataloader, model, optimizer, loss_fn, device="cuda"):
         optimizer.step()
 
 
-def evaluate(dataloader, model, device="cuda"):
+def evaluate(
+    dataloader: torch.utils.data.DataLoader,
+    model: torch.nn.Module,
+    device: str = "cuda",
+) -> dict:
     model.eval()
     losses, preds, labels = [], [], []
     with torch.no_grad():
@@ -49,19 +65,114 @@ def evaluate(dataloader, model, device="cuda"):
             preds.extend(logits.argmax(-1).cpu().tolist())
             labels.extend(y.cpu().tolist())
             losses.append(loss.item())
-    preds, labels = np.array(preds), np.array(labels)
-    acc = np.mean(preds == labels)
-    loss = np.mean(losses)
+    preds_np, labels_np = np.array(preds), np.array(labels)
+    acc = np.mean(preds_np == labels_np)
+    mean_loss = np.mean(losses)
     return {
         "acc": acc,
-        "loss": loss,
-        "preds": preds,
-        "labels": labels,
+        "loss": mean_loss,
+        "preds": preds_np,
+        "labels": labels_np,
     }
+
+
+def train_image_model(
+    features: torch.Tensor,
+    labels: torch.Tensor,
+    train_idxs: list,
+    val_idxs: list,
+    data: Optional[list] = None,
+    fields: Optional[list] = None,
+    n_epochs: int = 25,
+    batch_size: int = 32,
+    lr: float = 1e-3,
+    close_gap: bool = False,
+    global_mean: Optional[torch.Tensor] = None,
+) -> torch.nn.Module:
+    assert len(features) == len(
+        labels
+    ), "Features and labels should have the same length."
+    features = F.normalize(features)
+
+    if close_gap:
+        if global_mean is not None:
+            assert global_mean.shape == features.shape[1:]
+            features = features - global_mean
+        else:
+            features = features - features.mean(0)
+
+    train_features = features[train_idxs]
+    train_labels = labels[train_idxs]
+    val_features = features[val_idxs]
+    val_labels = labels[val_idxs]
+
+    train_dataset = TensorDataset(train_features, train_labels)
+    val_dataset = TensorDataset(val_features, val_labels)
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
+    d_model = features.shape[1]
+    n_classes = int(labels.max().item() + 1)
+    model = Linear(d_model, n_classes).cuda()
+    opt = torch.optim.Adam(model.parameters(), lr=lr)
+
+    for epoch_idx in range(n_epochs):
+        train_one_epoch(train_dataloader, model, opt)
+        metrics = evaluate(val_dataloader, model)
+        print(epoch_idx, metrics)
+
+        if fields is not None:
+            assert (
+                data is not None
+            ), "Data must be provided to compute subgroup metrics."
+            assert len(data) == len(
+                features
+            ), "Data and features should have the same length."
+            preds, labels = metrics["preds"], metrics["labels"]
+            subgroups = subgrouping([data[idx] for idx in val_idxs], fields)
+            subgroup_metrics = computing_subgroup_metrics(
+                preds.tolist(), labels.tolist(), subgroups
+            )
+            print(sorted(subgroup_metrics.items(), key=lambda x: x[1]))
+
+    return model
+
+
+def train_image_model_waterbird(
+    data_path: str, feature_path: str, close_gap: bool = False, coco_norm: bool = True
+):
+    data = [json.loads(line) for line in open(data_path)]
+    features = F.normalize(torch.load(feature_path))
+    labels = torch.tensor([item["attributes"]["waterbird"] for item in data])
+
+    train_idxs = [
+        i for i, item in enumerate(data) if item["attributes"]["split"] == "train"
+    ]
+    val_idxs = [
+        i for i, item in enumerate(data) if item["attributes"]["split"] == "val"
+    ]
+
+    global_mean = None
+    if close_gap and coco_norm:
+        coco_features = torch.load("pytorch_cache/features/coco_features_vitb32.pt")
+        global_mean = F.normalize(coco_features["image_features"]).mean(0)
+
+    model = train_image_model(
+        features,
+        labels,
+        train_idxs,
+        val_idxs,
+        data=data,
+        fields=["waterbird", "waterplace"],
+        close_gap=close_gap,
+        global_mean=global_mean,
+    )
+    torch.save(model.state_dict(), f"waterbird_linear_model_gap{not close_gap}.pt")
 
 
 def train_image_model_fairface(data_path: str, feature_path: str):
     data = [json.loads(line) for line in open(data_path)]
+    features = F.normalize(torch.load(feature_path))
     labels = torch.tensor(
         [1 if item["attributes"]["gender"] == "Female" else 0 for item in data]
     )
@@ -82,7 +193,6 @@ def train_image_model_fairface(data_path: str, feature_path: str):
     montana_race_norm = {
         key: montana_race[key] / montana_race["White"] for key in montana_race
     }
-    print(montana_race_norm)
 
     sampled_train_idxs = []
     random.seed(1234)
@@ -92,110 +202,37 @@ def train_image_model_fairface(data_path: str, feature_path: str):
             if random.random() <= montana_race_norm[race]:
                 sampled_train_idxs.append(idx)
 
-    # race_distribution = Counter([item["attributes"]["race"] for item in sampled_train_data]).most_common()
-
-    features = F.normalize(torch.load(feature_path))
-
-    train_features = features[sampled_train_idxs]
-    train_labels = labels[sampled_train_idxs]
-    val_features = features[val_idxs]
-    val_labels = labels[val_idxs]
-
-    train_dataset = TensorDataset(train_features, train_labels)
-    val_dataset = TensorDataset(val_features, val_labels)
-    train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-    val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-
-    model = Linear(512, 2).cuda()
-    opt = torch.optim.Adam(model.parameters(), lr=1e-3)
-
-    for epoch_idx in range(25):
-        train_one_epoch(train_dataloader, model, opt)
-        metrics = evaluate(val_dataloader, model)
-        print(epoch_idx, metrics)
-
+    model = train_image_model(
+        features, labels, sampled_train_idxs, val_idxs, data=data, fields=["race"]
+    )
     torch.save(model.state_dict(), "fairface_linear_model.pt")
 
 
 def train_image_model_dspites(data_path: str, feature_path: str):
     data = [json.loads(line) for line in open(data_path)]
+    features = F.normalize(torch.load(feature_path))
     labels = torch.tensor([item["attributes"]["label"] for item in data])
 
     all_train_idxs = [
-        i for i, item in enumerate(data) if item["attributes"]["color"] == "red"
+        i
+        for i, item in enumerate(data)
+        if (item["attributes"]["color"] == "green" and item["attributes"]["label"] == 0)
+        or (
+            item["attributes"]["color"] == "orange" and item["attributes"]["label"] == 1
+        )
     ]
 
     random.seed(1234)
     train_idxs = random.sample(all_train_idxs, int(len(all_train_idxs) * 0.9))
     val_idxs = [idx for idx in range(len(data)) if idx not in train_idxs]
-    json.dump([train_idxs, val_idxs], open("train_val_idxs.json", "w"))
-    print(len(train_idxs), len(val_idxs))
+    json.dump(
+        [train_idxs, val_idxs], open("dspites_train_val_idxs.json", "w"), indent=2
+    )
 
-    features = F.normalize(torch.load(feature_path))
-
-    train_features = features[train_idxs]
-    train_labels = labels[train_idxs]
-    val_features = features[val_idxs]
-    val_labels = labels[val_idxs]
-
-    train_dataset = TensorDataset(train_features, train_labels)
-    val_dataset = TensorDataset(val_features, val_labels)
-    train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-    val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-
-    model = Linear(512, 2).cuda()
-    opt = torch.optim.Adam(model.parameters(), lr=1e-3)
-
-    for epoch_idx in range(25):
-        train_one_epoch(train_dataloader, model, opt)
-        metrics = evaluate(val_dataloader, model)
-        print(epoch_idx, metrics)
-
+    model = train_image_model(
+        features, labels, train_idxs, val_idxs, data=data, fields=["color", "label"]
+    )
     torch.save(model.state_dict(), "dspites_linear_model.pt")
-
-
-def train_image_model_waterbird(
-    data_path: str, feature_path: str, close_gap: bool, coco_norm: bool = True
-):
-    data = [json.loads(line) for line in open(data_path)]
-    labels = torch.tensor([item["attributes"]["waterbird"] for item in data])
-
-    train_idxs = [
-        i for i, item in enumerate(data) if item["attributes"]["split"] == "train"
-    ]
-    val_idxs = [
-        i for i, item in enumerate(data) if item["attributes"]["split"] == "val"
-    ]
-
-    features = F.normalize(torch.load(feature_path))
-
-    if close_gap:
-        if coco_norm:
-            coco_features = torch.load("pytorch_cache/features/coco_features_vitb32.pt")
-            coco_mean = F.normalize(coco_features["image_features"]).mean(0)
-            features = features - coco_mean
-        else:
-            features = features - features.mean(0)
-
-    train_features = features[train_idxs]
-    train_labels = labels[train_idxs]
-    val_features = features[val_idxs]
-    val_labels = labels[val_idxs]
-
-    train_dataset = TensorDataset(train_features, train_labels)
-    val_dataset = TensorDataset(val_features, val_labels)
-    train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-    val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-
-    model = Linear(512, 2).cuda()
-    opt = torch.optim.Adam(model.parameters(), lr=1e-3)
-
-    for epoch_idx in range(25):
-        train_one_epoch(train_dataloader, model, opt)
-        metrics = evaluate(val_dataloader, model)
-        print(epoch_idx, metrics)
-
-    torch.save(model.state_dict(), f"waterbird_linear_model_gap{not close_gap}.pt")
 
 
 def train_image_model_waterbird_dro(data_path: str, feature_path: str):
@@ -402,11 +439,11 @@ if __name__ == "__main__":
         "../data/TriangleSquare/processed_attribute_dataset/attributes.jsonl",
         "pytorch_cache/features/trianglesquare_features_vitb32.pt",
     )
-    train_image_model_waterbird_dro(
-        "../data/Waterbird/processed_attribute_dataset/attributes.jsonl",
-        "pytorch_cache/features/waterbird_features_vitb32.pt",
-    )
-    train_image_model_fairface_dro(
-        "../data/FairFace/processed_attribute_dataset/attributes.jsonl",
-        "pytorch_cache/features/fairface_features_vitb32.pt",
-    )
+    # train_image_model_waterbird_dro(
+    #     "../data/Waterbird/processed_attribute_dataset/attributes.jsonl",
+    #     "pytorch_cache/features/waterbird_features_vitb32.pt",
+    # )
+    # train_image_model_fairface_dro(
+    #     "../data/FairFace/processed_attribute_dataset/attributes.jsonl",
+    #     "pytorch_cache/features/fairface_features_vitb32.pt",
+    # )
