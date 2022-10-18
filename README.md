@@ -1,8 +1,9 @@
 # DrML: Diagnosing and Rectifying Vision Models using Language
 
 [![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://lbesson.mit-license.org/)
-[![Python 3.8](https://img.shields.io/badge/python-3.10-blue.svg)](https://www.python.org/downloads/release/python-310/)
+[![Python](https://img.shields.io/badge/python-3.10-blue.svg)](https://www.python.org/downloads/release/python-3100/)
 [![Pytorch](https://img.shields.io/badge/Pytorch-1.12-red.svg)](https://pytorch.org/get-started/previous-versions/#v112)
+[![Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
 
 This repo provides the PyTorch source code of our paper: 
 [DrML: Diagnosing and Rectifying Vision Models using Language](https://openreview.net/forum?id=D-zfUK7BR6c) (Under Review)
