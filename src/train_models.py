@@ -128,9 +128,7 @@ def train_image_model(
             ), "Data and features should have the same length."
             preds, labels = metrics["preds"], metrics["labels"]
             subgroups = subgrouping([data[idx] for idx in val_idxs], fields)
-            subgroup_metrics = computing_subgroup_metrics(
-                preds.tolist(), labels.tolist(), subgroups
-            )
+            subgroup_metrics = computing_subgroup_metrics(preds == labels, subgroups)
             print(sorted(subgroup_metrics.items(), key=lambda x: x[1]))
 
     return model
@@ -200,9 +198,7 @@ def train_image_model_dro(
             ), "Data and features should have the same length."
             preds, labels = metrics["preds"], metrics["labels"]
             subgroups = subgrouping([data[idx] for idx in val_idxs], fields)
-            subgroup_metrics = computing_subgroup_metrics(
-                preds.tolist(), labels.tolist(), subgroups
-            )
+            subgroup_metrics = computing_subgroup_metrics(preds == labels, subgroups)
             print(sorted(subgroup_metrics.items(), key=lambda x: x[1]))
 
     return model

@@ -14,15 +14,8 @@ def subgrouping(data: List[Dict], fields: List[str]) -> Dict:
     return dict(sorted(subgroups.items()))
 
 
-def computing_subgroup_metrics(
-    preds: List[int], labels: List[int], subgroups: Dict
-) -> Dict:
-    assert len(preds) == len(labels)
-    subgroup_metrics = {}
-    for x in subgroups:
-        subgroup_preds = np.array(preds)[subgroups[x]]
-        subgroup_labels = np.array(labels)[subgroups[x]]
-        subgroup_metrics[x] = (subgroup_preds == subgroup_labels).mean()
+def computing_subgroup_metrics(instance_metrics: np.ndarray, subgroups: Dict) -> Dict:
+    subgroup_metrics = {x: instance_metrics[subgroups[x]].mean() for x in subgroups}
     return subgroup_metrics
 
 

@@ -4,7 +4,7 @@ import json
 from utils import openai_imagenet_template
 
 
-def prepare_waterbird(input_type: str) -> list:
+def prepare_waterbird(data_path: str, input_type: str) -> list:
     def concat(x: dict) -> list:
         return [f"{x['species']}, {x['place']}.".lower()]
 
@@ -17,12 +17,7 @@ def prepare_waterbird(input_type: str) -> list:
             for pg in openai_imagenet_template
         ]
 
-    data = [
-        json.loads(line)
-        for line in open(
-            "../data/Waterbird/processed_attribute_dataset/attributes.jsonl"
-        )
-    ]
+    data = [json.loads(line) for line in open(data_path)]
 
     attributes = {
         "place": set([x["attributes"]["place"] for x in data]),
@@ -61,7 +56,7 @@ def prepare_waterbird(input_type: str) -> list:
     return text_data
 
 
-def prepare_fairface(input_type: str) -> list:
+def prepare_fairface(data_path: str, input_type: str) -> list:
     def concat(x: dict) -> list:
         return [f"{x['age']}, {x['race']}, {x['gender']}.".replace("_", " ").lower()]
 
@@ -82,12 +77,7 @@ def prepare_fairface(input_type: str) -> list:
             for pg in openai_imagenet_template
         ]
 
-    data = [
-        json.loads(line)
-        for line in open(
-            "../data/FairFace/processed_attribute_dataset/attributes.jsonl"
-        )
-    ]
+    data = [json.loads(line) for line in open(data_path)]
 
     attributes = {
         "age": set([x["attributes"]["age"] for x in data]),
@@ -131,7 +121,7 @@ def prepare_fairface(input_type: str) -> list:
     return text_data
 
 
-def prepare_dspites(input_type: str) -> list:
+def prepare_dspites(data_path: str, input_type: str) -> list:
     def concat(x: dict) -> list:
         return [
             f"{['small', 'medium', 'large'][x['concrete_scale']]}, {x['color']}, {['square', 'triangle'][x['label']]}.".lower()  # noqa: E501
@@ -150,12 +140,7 @@ def prepare_dspites(input_type: str) -> list:
             for pg in openai_imagenet_template
         ]
 
-    data = [
-        json.loads(line)
-        for line in open(
-            "../data/TriangleSquare/processed_attribute_dataset/attributes.jsonl"
-        )
-    ]
+    data = [json.loads(line) for line in open(data_path)]
 
     for item in data:
         if item["attributes"]["scale"] < 0.9:
@@ -197,23 +182,50 @@ def prepare_dspites(input_type: str) -> list:
 
 
 if __name__ == "__main__":
-    text_data = prepare_waterbird(input_type="concat")
+    text_data = prepare_waterbird(
+        data_path="../data/Waterbird/processed_attribute_dataset/attributes.jsonl",
+        input_type="concat",
+    )
     print(text_data[0], len(text_data))
-    text_data = prepare_waterbird(input_type="prompt")
+    text_data = prepare_waterbird(
+        data_path="../data/Waterbird/processed_attribute_dataset/attributes.jsonl",
+        input_type="prompt",
+    )
     print(text_data[0], len(text_data))
-    text_data = prepare_waterbird(input_type="ensemble")
+    text_data = prepare_waterbird(
+        data_path="../data/Waterbird/processed_attribute_dataset/attributes.jsonl",
+        input_type="ensemble",
+    )
     print(text_data[0], len(text_data))
 
-    text_data = prepare_fairface(input_type="concat")
+    text_data = prepare_fairface(
+        data_path="../data/FairFace/processed_attribute_dataset/attributes.jsonl",
+        input_type="concat",
+    )
     print(text_data[0], len(text_data))
-    text_data = prepare_fairface(input_type="prompt")
+    text_data = prepare_fairface(
+        data_path="../data/FairFace/processed_attribute_dataset/attributes.jsonl",
+        input_type="prompt",
+    )
     print(text_data[0], len(text_data))
-    text_data = prepare_fairface(input_type="ensemble")
+    text_data = prepare_fairface(
+        data_path="../data/FairFace/processed_attribute_dataset/attributes.jsonl",
+        input_type="ensemble",
+    )
     print(text_data[0], len(text_data))
 
-    text_data = prepare_dspites(input_type="concat")
+    text_data = prepare_dspites(
+        data_path="../data/TriangleSquare/processed_attribute_dataset/attributes.jsonl",
+        input_type="concat",
+    )
     print(text_data[0], len(text_data))
-    text_data = prepare_dspites(input_type="prompt")
+    text_data = prepare_dspites(
+        data_path="../data/TriangleSquare/processed_attribute_dataset/attributes.jsonl",
+        input_type="prompt",
+    )
     print(text_data[0], len(text_data))
-    text_data = prepare_dspites(input_type="ensemble")
+    text_data = prepare_dspites(
+        data_path="../data/TriangleSquare/processed_attribute_dataset/attributes.jsonl",
+        input_type="ensemble",
+    )
     print(text_data[0], len(text_data))
