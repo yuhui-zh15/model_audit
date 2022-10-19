@@ -121,7 +121,7 @@ def prepare_fairface(data_path: str, input_type: str) -> list:
     return text_data
 
 
-def prepare_dspites(data_path: str, input_type: str) -> list:
+def prepare_dsprites(data_path: str, input_type: str) -> list:
     def concat(x: dict) -> list:
         return [
             f"{['small', 'medium', 'large'][x['concrete_scale']]}, {x['color']}, {['square', 'triangle'][x['label']]}.".lower()  # noqa: E501
@@ -214,17 +214,17 @@ if __name__ == "__main__":
     )
     print(text_data[0], len(text_data))
 
-    text_data = prepare_dspites(
+    text_data = prepare_dsprites(
         data_path="../data/TriangleSquare/processed_attribute_dataset/attributes.jsonl",
         input_type="concat",
     )
     print(text_data[0], len(text_data))
-    text_data = prepare_dspites(
+    text_data = prepare_dsprites(
         data_path="../data/TriangleSquare/processed_attribute_dataset/attributes.jsonl",
         input_type="prompt",
     )
     print(text_data[0], len(text_data))
-    text_data = prepare_dspites(
+    text_data = prepare_dsprites(
         data_path="../data/TriangleSquare/processed_attribute_dataset/attributes.jsonl",
         input_type="ensemble",
     )

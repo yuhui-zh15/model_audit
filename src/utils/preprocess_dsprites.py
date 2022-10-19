@@ -26,9 +26,9 @@ def circle_img(color="white", angle=0, scale=1.0):
     return circle_img.rotate(angle).resize((int(100 * scale), int(100 * scale)))
 
 
-def create_dspites_dataset():
+def create_dsprites_dataset():
     random.seed(1234)
-    path = "data/dSpites"
+    path = "data/dSprites"
 
     os.mkdir(f"{path}/processed_attribute_dataset")
     os.mkdir(f"{path}/processed_attribute_dataset/images")
@@ -94,4 +94,4 @@ def create_dspites_dataset():
             f.write(json.dumps(item) + "\n")
 
 
-create_dspites_dataset()
+create_dsprites_dataset()

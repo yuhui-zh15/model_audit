@@ -329,7 +329,7 @@ def train_image_model_fairface(data_path: str, feature_path: str, dro: bool = Fa
     torch.save(model.state_dict(), f"fairface_linear_model_dro{dro}.pt")
 
 
-def train_image_model_dspites(data_path: str, feature_path: str):
+def train_image_model_dsprites(data_path: str, feature_path: str):
     data = [json.loads(line) for line in open(data_path)]
     features = F.normalize(torch.load(feature_path))
     labels = torch.tensor([item["attributes"]["label"] for item in data])
@@ -347,13 +347,13 @@ def train_image_model_dspites(data_path: str, feature_path: str):
     train_idxs = random.sample(all_train_idxs, int(len(all_train_idxs) * 0.9))
     val_idxs = [idx for idx in range(len(data)) if idx not in train_idxs]
     json.dump(
-        [train_idxs, val_idxs], open("dspites_train_val_idxs.json", "w"), indent=2
+        [train_idxs, val_idxs], open("dsprites_train_val_idxs.json", "w"), indent=2
     )
 
     model = train_image_model(
         features, labels, train_idxs, val_idxs, data=data, fields=["color", "label"]
     )
-    torch.save(model.state_dict(), "dspites_linear_model.pt")
+    torch.save(model.state_dict(), "dsprites_linear_model.pt")
 
 
 if __name__ == "__main__":
@@ -365,7 +365,7 @@ if __name__ == "__main__":
         "../data/FairFace/processed_attribute_dataset/attributes.jsonl",
         "pytorch_cache/features/fairface_features_vitb32.pt",
     )
-    train_image_model_dspites(
+    train_image_model_dsprites(
         "../data/TriangleSquare/processed_attribute_dataset/attributes.jsonl",
         "pytorch_cache/features/trianglesquare_features_vitb32.pt",
     )
