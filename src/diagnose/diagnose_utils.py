@@ -18,10 +18,10 @@ def get_model_output(
     model: torch.nn.Module,
     clip_model: torch.nn.Module,
     transform: torchvision.transforms,
-    image_data: List[dict],
-    generated_data: List[dict],
+    image_data: List[Dict],
+    generated_data: List[Dict],
     generated_data_modality: Optional[str] = "text",
-) -> Tuple[dict, dict]:
+) -> Tuple[Dict, Dict]:
     image_dataset = ImageDataset(data=image_data)
     image_dataloader = create_dataloader(
         dataset=image_dataset, modality="image", transform=transform
@@ -84,7 +84,7 @@ def compute_subgroup_correlation(
     text_metrics: Dict,
     fields: List[str],
     visualization: bool = False,
-) -> None:
+) -> Tuple[Dict, Dict, Dict]:
     image_subgroups = subgrouping(image_data, fields)
     image_instance_accs = np.array(image_metrics["preds"]) == np.array(
         image_metrics["labels"]
@@ -116,6 +116,7 @@ def compute_subgroup_correlation(
         [text_subgroup_probs[x] for x in image_subgroups],
         [image_subgroup_accs[x] for x in image_subgroups],
     )
+    return image_subgroup_accs, text_subgroup_accs, text_subgroup_probs
 
 
 def compute_dataset_correlation(
@@ -189,3 +190,51 @@ def compute_dataset_correlation(
         generated_image_metrics,
         fields=fields,
     )
+
+
+def discover_slices(
+    clip_model_name: str,
+    linear_model_path: str,
+    data_path: str,
+    filter_fn: Callable,
+    label_fn: Callable,
+    prepare_fn: Callable,
+    fields: List[str],
+) -> List:
+    clip_model, transform = clip.load(name=clip_model_name, device="cuda")
+    clip_model = clip_model.float()
+    state_dict = torch.load(linear_model_path)
+    n_class = state_dict["fc.weight"].shape[0]
+    model = Linear(clip_model.visual.output_dim, n_class).cuda()
+    model.load_state_dict(state_dict)
+
+    image_data = [json.loads(line) for line in open(data_path)]
+    image_data = [item for idx, item in enumerate(image_data) if filter_fn(idx, item)]
+    for item in image_data:
+        item["label"] = label_fn(item)
+
+    text_data = prepare_fn(data_path=data_path, input_type="ensemble")
+
+    image_metrics, text_metrics = get_model_output(
+        model, clip_model, transform, image_data, text_data
+    )
+    (
+        image_subgroup_accs,
+        text_subgroup_accs,
+        text_subgroup_probs,
+    ) = compute_subgroup_correlation(
+        image_data,
+        image_metrics,
+        text_data,
+        text_metrics,
+        fields=fields,
+    )
+    subgroup_accs = {
+        key: (
+            image_subgroup_accs[key],
+            text_subgroup_accs[key],
+            text_subgroup_probs[key],
+        )
+        for key in image_subgroup_accs
+    }
+    return sorted(subgroup_accs.items(), key=lambda x: x[1][0])
