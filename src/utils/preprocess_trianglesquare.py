@@ -19,6 +19,15 @@ def square_img(color="white", angle=0, scale=1.0):
     return square_img.rotate(angle).resize((int(100 * scale), int(100 * scale)))
 
 
+def get_concrete_scale(scale):
+    if scale < 0.9:
+        return 0
+    elif scale > 1.1:
+        return 2
+    else:
+        return 1
+
+
 def create_triangle_square_classification_dataset():
     random.seed(1234)
     path = "data/TriangleSquare"
@@ -60,6 +69,7 @@ def create_triangle_square_classification_dataset():
                     "scale": scale,
                     "position": pos_idx,
                     "concrete_position": [x, y],
+                    "concrete_scale": get_concrete_scale(scale),
                     "label": label,
                 },
             }
