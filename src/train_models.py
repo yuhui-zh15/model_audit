@@ -86,6 +86,7 @@ def train_image_model(
     lr: float = 1e-3,
     close_gap: bool = False,
     global_mean: Optional[torch.Tensor] = None,
+    train_twice: bool = False,
 ) -> torch.nn.Module:
     assert len(features) == len(
         labels
@@ -131,6 +132,55 @@ def train_image_model(
             subgroup_metrics = computing_subgroup_metrics(preds == labels, subgroups)
             print(sorted(subgroup_metrics.items(), key=lambda x: x[1]))
 
+    if train_twice:
+        lambda_up = 5
+        train_dataset_eval = TensorDataset(train_features, train_labels)
+        train_dataloader_eval = DataLoader(
+            train_dataset_eval, batch_size=batch_size, shuffle=False
+        )
+        metrics = evaluate(train_dataloader_eval, model)
+        preds, labels = metrics["preds"], metrics["labels"]
+        wrong_idxs = np.where(preds != labels)[0]
+        print(wrong_idxs)
+
+        train_features_upweight = torch.cat(
+            [train_features, train_features[wrong_idxs].repeat(lambda_up - 1, 1)], dim=0
+        )
+        train_labels_upweight = torch.cat(
+            [train_labels, train_labels[wrong_idxs].repeat(lambda_up - 1)], dim=0
+        )
+        train_dataset_upweight = TensorDataset(
+            train_features_upweight, train_labels_upweight
+        )
+        train_dataloader_upweight = DataLoader(
+            train_dataset_upweight, batch_size=batch_size, shuffle=True
+        )
+
+        print(
+            "Original training set size:",
+            len(train_features),
+            "Upweighted training set size:",
+            len(train_features_upweight),
+        )
+
+        for epoch_idx in range(n_epochs):
+            train_one_epoch(train_dataloader_upweight, model, opt)
+            metrics = evaluate(val_dataloader, model)
+            print(epoch_idx, metrics)
+
+            if fields is not None:
+                assert (
+                    data is not None
+                ), "Data must be provided to compute subgroup metrics."
+                assert len(data) == len(
+                    features
+                ), "Data and features should have the same length."
+                preds, labels = metrics["preds"], metrics["labels"]
+                subgroups = subgrouping([data[idx] for idx in val_idxs], fields)
+                subgroup_metrics = computing_subgroup_metrics(
+                    preds == labels, subgroups
+                )
+                print(sorted(subgroup_metrics.items(), key=lambda x: x[1]))
     return model
 
 
@@ -209,7 +259,7 @@ def train_image_model_waterbird(
     feature_path: str,
     close_gap: bool = False,
     coco_norm: bool = True,
-    dro: bool = False,
+    loss: str = "erm",
 ):
     data = [json.loads(line) for line in open(data_path)]
     features = F.normalize(torch.load(feature_path))
@@ -227,7 +277,7 @@ def train_image_model_waterbird(
         coco_features = torch.load("pytorch_cache/features/coco_features_vitb32.pt")
         global_mean = F.normalize(coco_features["image_features"]).mean(0)
 
-    if not dro:
+    if loss == "erm":
         model = train_image_model(
             features,
             labels,
@@ -238,7 +288,7 @@ def train_image_model_waterbird(
             close_gap=close_gap,
             global_mean=global_mean,
         )
-    else:
+    elif loss == "dro":
         assert not close_gap, "DRO is not compatible with close gap."
         group2idx = {
             (0, 0): 0,
@@ -264,13 +314,27 @@ def train_image_model_waterbird(
             data=data,
             fields=["waterbird", "waterplace"],
         )
+    elif loss == "jtt":
+        model = train_image_model(
+            features,
+            labels,
+            train_idxs,
+            val_idxs,
+            data=data,
+            fields=["waterbird", "waterplace"],
+            close_gap=close_gap,
+            global_mean=global_mean,
+            train_twice=True,
+        )
+    else:
+        raise ValueError(f"Unknown loss: {loss}")
 
     torch.save(
-        model.state_dict(), f"waterbird_linear_model_gap{not close_gap}_dro{dro}.pt"
+        model.state_dict(), f"waterbird_linear_model_gap{not close_gap}_{loss}.pt"
     )
 
 
-def train_image_model_fairface(data_path: str, feature_path: str, dro: bool = False):
+def train_image_model_fairface(data_path: str, feature_path: str, loss: str = "erm"):
     data = [json.loads(line) for line in open(data_path)]
     features = F.normalize(torch.load(feature_path))
     labels = torch.tensor(
@@ -302,11 +366,11 @@ def train_image_model_fairface(data_path: str, feature_path: str, dro: bool = Fa
             if random.random() <= montana_race_norm[race]:
                 sampled_train_idxs.append(idx)
 
-    if not dro:
+    if loss == "erm":
         model = train_image_model(
             features, labels, sampled_train_idxs, val_idxs, data=data, fields=["race"]
         )
-    else:
+    elif loss == "dro":
         group2idx = {
             "White": 0,
             "Indian": 1,
@@ -325,8 +389,20 @@ def train_image_model_fairface(data_path: str, feature_path: str, dro: bool = Fa
             data=data,
             fields=["race"],
         )
+    elif loss == "jtt":
+        model = train_image_model(
+            features,
+            labels,
+            sampled_train_idxs,
+            val_idxs,
+            data=data,
+            fields=["race"],
+            train_twice=True,
+        )
+    else:
+        raise ValueError(f"Unknown loss: {loss}")
 
-    torch.save(model.state_dict(), f"fairface_linear_model_dro{dro}.pt")
+    torch.save(model.state_dict(), f"fairface_linear_model_{loss}.pt")
 
 
 def train_image_model_dsprites(data_path: str, feature_path: str):
@@ -372,10 +448,20 @@ if __name__ == "__main__":
     train_image_model_waterbird(
         "../data/Waterbird/processed_attribute_dataset/attributes.jsonl",
         "pytorch_cache/features/waterbird_features_vitb32.pt",
-        dro=True,
+        loss="dro",
     )
     train_image_model_fairface(
         "../data/FairFace/processed_attribute_dataset/attributes.jsonl",
         "pytorch_cache/features/fairface_features_vitb32.pt",
-        dro=True,
+        loss="dro",
+    )
+    train_image_model_waterbird(
+        "../data/Waterbird/processed_attribute_dataset/attributes.jsonl",
+        "pytorch_cache/features/waterbird_features_vitb32.pt",
+        loss="jtt",
+    )
+    train_image_model_fairface(
+        "../data/FairFace/processed_attribute_dataset/attributes.jsonl",
+        "pytorch_cache/features/fairface_features_vitb32.pt",
+        loss="jtt",
     )
